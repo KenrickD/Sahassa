@@ -1,0 +1,42 @@
+﻿@model WMS.WebApp.Models.RawMaterial.RawMaterialItemsViewModel
+
+@{
+    var showGrouped = Model.ShowGrouped;
+    var toggleGrouped = !showGrouped;
+    var toggleText = showGrouped ? "View by Item" : "Group by Batch No";
+}
+
+@Html.AntiForgeryToken()
+@if (TempData["Success"] != null)
+{
+    <script>
+        sessionStorage.setItem("successMessage", "@TempData["Success"]");
+    </script>
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4>Items</h4>
+    <button id="toggle-group-btn" class="btn btn-secondary">@toggleText</button>
+</div>
+
+<table id="items-table" data-receive-id="@Model.ReceiveId" data-show-grouped="@Model.ShowGrouped.ToString().ToLower()" class="table table-bordered table-striped">
+    <thead>
+        <tr id="items-table-header">
+            <!-- Columns injected by JS -->
+        </tr>
+    </thead>
+    <tbody>
+        <!-- DataTables will populate this -->
+    </tbody>
+</table>
+
+@section Scripts {
+    <script src="~/js/pages/raw-material/items-table.js" asp-append-version="true"></script>
+    <script>
+        const successMessage = sessionStorage.getItem("successMessage");
+        if (successMessage) {
+            toastr.success(successMessage);
+            sessionStorage.removeItem("successMessage");
+        }
+    </script>
+}

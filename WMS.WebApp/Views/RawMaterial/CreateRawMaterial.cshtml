@@ -1,0 +1,64 @@
+﻿@model WMS.Domain.DTOs.GIV_RawMaterial.Web.RawMaterialCreateWebDto
+@using System.Text.Json
+@{
+    ViewData["Title"] = "Add Raw Material";
+    var pkg = ViewBag.PackageTypes as List<SelectListItem>
+              ?? new List<SelectListItem>();
+    var pkgJson = JsonSerializer.Serialize(pkg);
+
+    var cont = ViewBag.Containers as List<SelectListItem> ?? new();
+    var contJson = JsonSerializer.Serialize(cont, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+}
+<script>
+    window.packageTypes = @Html.Raw(pkgJson);
+    console.log("packageTypes:", window.packageTypes);
+
+      window.containers = @Html.Raw(contJson);
+    console.log('containers', window.containers);
+</script>
+<div class="card p-4">
+    <h3 class="mb-4">Create Raw Material</h3>
+    <form id="create-raw-material-form"
+          asp-controller="RawMaterial"
+          asp-action="Create"
+          method="post"
+          enctype="multipart/form-data">
+        @Html.AntiForgeryToken()
+
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label>Material No</label>
+                <input type="text"
+                       name="MaterialNo"
+                       class="form-control"
+                       required />
+            </div>
+            <div>
+                <label>Description</label>
+                <input type="text"
+                       name="Description"
+                       class="form-control" />
+            </div>
+        </div>
+
+
+        <hr class="my-4" />
+        <h4>Receives</h4>
+        <div id="receives-container">
+            <!-- JS will inject Receives here -->
+        </div>
+
+        <button type="button" id="add-receive-btn" class="btn btn-outline-primary mt-3">
+            + Add Receive
+        </button>
+
+        <div class="mt-5 flex justify-end gap-3">
+            <a asp-action="Datatable" asp-controller="RawMaterial" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">Submit</button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script src="~/js/pages/raw-material/create-raw-material.js" asp-append-version="true"></script>
+}

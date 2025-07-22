@@ -1,0 +1,117 @@
+﻿@model WMS.Domain.DTOs.Users.UserDto
+
+<aside class="sidebar">
+    <button type="button" class="sidebar-close-btn !mt-4">
+        <iconify-icon icon="radix-icons:cross-2"></iconify-icon>
+    </button>
+    <div>
+        <a asp-action="Index" asp-controller="Home" class="sidebar-logo">
+            <img src="~/images/HSC_Logo.png" alt="site logo" class="light-logo">
+            <img src="~/images/HSC_Logo.png" alt="site logo" class="dark-logo">
+            <img src="~/images/HSCIcon.png" alt="site logo" class="logo-icon">
+        </a>
+    </div>
+    <div class="sidebar-menu-area">
+        <ul class="sidebar-menu" id="sidebar-menu">
+            <li class="sidebar-menu-group-title">WMS</li>
+            <li class="dropdown">
+                <a href="javascript:void(0)">
+                    <iconify-icon icon="solar:home-smile-angle-outline" class="menu-icon"></iconify-icon>
+                    <span>Dashboard</span>
+                </a>
+                <ul class="sidebar-submenu">
+                    <li>
+                        <a asp-action="Index" asp-controller="Home"><i class="ri-circle-fill circle-icon text-primary-600 w-auto"></i> WMS</a>
+                    </li>
+                </ul>
+            </li>
+
+            <li class="dropdown">
+                <a href="javascript:void(0)">
+                    <iconify-icon icon="solar:box-outline" class="menu-icon"></iconify-icon>
+                    <span>Inventory</span>
+                </a>
+                <ul class="sidebar-submenu">
+                    <li>
+                        <a asp-action="Index" asp-controller="Product"><i class="ri-circle-fill circle-icon text-primary-600 w-auto"></i> Products</a>
+                    </li>
+                </ul>
+            </li>
+
+            @* <li class="sidebar-menu-group-title">Raw Materials</li> *@
+            <li class="dropdown">
+                <a href="javascript:void(0)">
+                    <iconify-icon icon="icon-park-outline:setting-two" class="menu-icon"></iconify-icon>
+                    <span>Givaudan</span>
+                </a>
+                <ul class="sidebar-submenu">
+                    <li class="sidebar-menu-group-title">Raw Material</li>
+                    <li>
+                        <a asp-action="Datatable" asp-controller="RawMaterial">
+                            <i class="ri-circle-fill circle-icon text-primary-600 w-auto"></i> Listing
+                        </a>
+                    </li>
+                    <li class="sidebar-menu-group-title">Finished Good</li>
+                    <li>
+                        <a asp-action="Datatable" asp-controller="FinishedGood">
+                            <i class="ri-circle-fill circle-icon text-primary-600 w-auto"></i> Listing
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
+            @* <li class="sidebar-menu-group-title">Configuration</li> *@
+            <li class="dropdown">
+                <a href="javascript:void(0)">
+                    <iconify-icon icon="icon-park-outline:setting-two" class="menu-icon"></iconify-icon>
+                    <span>Configuration</span>
+                </a>
+                <ul class="sidebar-submenu">
+                    <li>
+                        <a asp-action="Index" asp-controller="Warehouse"><i class="ri-circle-fill circle-icon text-primary-600 w-auto"></i> Warehouses</a>
+                    </li>
+                    <li>
+                        <a asp-action="Index" asp-controller="Client"><i class="ri-circle-fill circle-icon text-primary-600 w-auto"></i> Clients</a>
+                    </li>
+                    <li>
+                        <a asp-action="Index" asp-controller="Zone"><i class="ri-circle-fill circle-icon text-primary-600 w-auto"></i> Zones</a>
+                    </li>
+                    <li>
+                        <a asp-action="Index" asp-controller="Location"><i class="ri-circle-fill circle-icon text-primary-600 w-auto"></i> Locations</a>
+                    </li>
+                </ul>
+            </li>
+
+            @* <li class="sidebar-menu-group-title">User Management</li> *@
+            <li class="dropdown">
+                <a href="javascript:void(0)">
+                    <iconify-icon icon="flowbite:users-group-outline" class="menu-icon"></iconify-icon>
+                    <span>Users & Roles</span>
+                </a>
+                <ul class="sidebar-submenu">
+                    <li>
+                        <a asp-action="Index" asp-controller="User"><i class="ri-circle-fill circle-icon text-primary-600 w-auto"></i> Users</a>
+                    </li>
+                    <li>
+                        <a asp-action="Index" asp-controller="Role"><i class="ri-circle-fill circle-icon text-primary-600 w-auto"></i> Roles</a>
+                    </li>
+                </ul>
+            </li>
+
+            @if(Model.Roles.Count > 0)
+            {
+                <li class="dropdown">
+                    <a href="javascript:void(0)">
+                        <iconify-icon icon="flowbite:users-group-outline" class="menu-icon"></iconify-icon>
+                        <span>Dummy</span>
+                    </a>
+                    <ul class="sidebar-submenu">
+                        <li>
+                            <a asp-action="Index" asp-controller="User"><i class="ri-circle-fill circle-icon text-primary-600 w-auto"></i> Dummys</a>
+                        </li>
+                    </ul>
+                </li>
+            }
+        </ul>
+    </div>
+</aside>

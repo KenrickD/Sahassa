@@ -1,0 +1,70 @@
+﻿@model WMS.Domain.DTOs.GIV_RM_ReceivePalletItem.RM_ReceivePalletItemDto
+
+@{
+    ViewData["Title"] = "Edit Item";
+    var receiveId = ViewBag.ReceiveId;
+    var grouped = ViewBag.Grouped;
+}
+<h4>HU @Model.Id</h4>
+<form asp-action="EditItem" method="post">
+    <input type="hidden" name="receiveId" value="@receiveId" />
+    <input type="hidden" name="grouped" value="@(grouped?.ToString().ToLower())" />
+
+    <input type="hidden" asp-for="Id" />
+    @Html.AntiForgeryToken()
+    
+    <div class="mb-3">
+        <label asp-for="ItemCode" class="form-label"></label>
+        <input asp-for="ItemCode" class="form-control" />
+        <span asp-validation-for="ItemCode" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="BatchNo" class="form-label"></label>
+        <input asp-for="BatchNo" class="form-control" />
+        <span asp-validation-for="BatchNo" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="ProdDate" class="form-label"></label>
+        <input asp-for="ProdDate" type="date" class="form-control" />
+        <span asp-validation-for="ProdDate" class="text-danger"></span>
+    </div>
+
+    <div class="form-check mb-3">
+        <input asp-for="DG" class="form-check-input" />
+        <label asp-for="DG" class="form-check-label"></label>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Remarks" class="form-label"></label>
+        <textarea asp-for="Remarks" class="form-control"></textarea>
+        <span asp-validation-for="Remarks" class="text-danger"></span>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save</button>
+    <a asp-action="Items"
+       asp-route-receiveId="@receiveId"
+       asp-route-grouped="@grouped"
+       class="btn btn-secondary">
+        Cancel
+    </a>
+</form>
+
+
+@section Scripts {
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+
+    <script>
+        const errorMessage = @Html.Raw(Json.Serialize(TempData["ErrorMessage"]));
+        if (errorMessage) {
+            toastr.error(errorMessage);
+        }
+
+        const successMessage = @Html.Raw(Json.Serialize(TempData["SuccessMessage"]));
+        if (successMessage) {
+            toastr.success(successMessage);
+        }
+    </script>
+}
+

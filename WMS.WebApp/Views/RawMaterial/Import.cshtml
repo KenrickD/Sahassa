@@ -1,0 +1,117 @@
+﻿@using WMS.Domain.DTOs.GIV_RawMaterial.Import
+@{
+    ViewData["Title"] = "Import Raw Materials";
+    var warehouses = ViewBag.Warehouses as List<SelectListItem>;
+}
+
+
+<form asp-action="Import" asp-controller="RawMaterial" enctype="multipart/form-data" method="post">
+    <div class="mb-4">
+        <label for="WarehouseId" class="block mb-2 font-medium">Select Warehouse</label>
+        <select name="WarehouseId" class="form-control w-full" required>
+            <option value="">-- Select Warehouse --</option>
+            @foreach (var item in warehouses)
+            {
+                <option value="@item.Value">@item.Text</option>
+            }
+        </select>
+    </div>
+
+    <div class="mb-4">
+        <label for="File" class="block mb-2 font-medium">Choose File</label>
+        <input type="file" name="File" accept=".xlsx,.csv" class="form-control w-full" required />
+    </div>
+
+    <button type="submit" class="btn btn-success">
+        <iconify-icon icon="mdi:upload" class="mr-2"></iconify-icon>
+        Upload
+    </button>
+    <a asp-action="DownloadImportTemplate" class="btn btn-secondary mb-3">
+        <iconify-icon icon="mdi:file-download-outline" class="mr-1"></iconify-icon>
+        Download Template
+    </a>
+
+</form>
+
+
+@{
+    var result = ViewBag.ImportResult as RawMaterialImportResult;
+}
+@if (result != null)
+{
+    <div class="mt-4">
+        <h5 class="text-lg font-semibold mb-2">Import Summary</h5>
+        <p>Total Rows: @result.TotalRows</p>
+        <p>Success: @result.SuccessCount, Errors: @result.ErrorCount</p>
+
+        @if (result.Warnings.Any())
+        {
+            <div class="alert alert-warning">
+                <ul>
+                    @foreach (var warning in result.Warnings)
+                    {
+                        <li>@warning</li>
+                    }
+                </ul>
+            </div>
+        }
+
+        @if (result.Errors.Any())
+        {
+            <div class="alert alert-danger">
+                <ul>
+                    @foreach (var error in result.Errors)
+                    {
+                        <li>@error</li>
+                    }
+                </ul>
+            </div>
+        }
+
+        <table class="table table-bordered mt-3">
+            <thead>
+                <tr>
+                    <th>Row</th>
+                    <th>Material No</th>
+                    <th>Description</th>
+                    <th>Status</th>
+                    <th>Message</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in result.Results)
+                {
+                    <tr class="@((item.Status == "Error") ? "table-danger" : "table-success")">
+                        <td>@item.RowNumber</td>
+                        <td>@item.MaterialNo</td>
+                        <td>@item.Description</td>
+                        <td>@item.Status</td>
+                        <td>@item.Message</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@section Scripts {
+
+    <script>
+        @if (ViewBag.SuccessMessage != null)
+        {
+                <text>toastr.success("@ViewBag.SuccessMessage");</text>
+        }
+
+        @if (ViewBag.ErrorMessage != null)
+        {
+                <text>toastr.error("@ViewBag.ErrorMessage");</text>
+        }
+                @if (result != null && result.Warnings.Any())
+        {
+                foreach (var warning in result.Warnings)
+                {
+                        <text>toastr.warning("@warning");</text>
+                }
+        }
+    </script>
+}

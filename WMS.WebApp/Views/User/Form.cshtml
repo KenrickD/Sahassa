@@ -1,0 +1,197 @@
+﻿@model WMS.WebApp.Models.Users.UserFormViewModel
+@{
+    ViewData["Title"] = "Add User";
+    ViewData["subTitle"] = "User / Add User";
+}
+
+<div class="grid grid-cols-12 gap-6">
+    <div class="col-span-12">
+        <div class="card border-0">
+            <div class="card-header">
+                <h4 class="mb-0">Add New User</h4>
+            </div>
+
+            <div class="card-body">
+                <form asp-action="Create" asp-controller="User" method="post" enctype="multipart/form-data" id="userForm">
+                    <input type="hidden" asp-for="Id" />
+                    <input type="hidden" asp-for="ExistingProfileImagePath" />
+
+                    <div class="grid grid-cols-12 gap-6">
+                        <!-- Profile Image Section -->
+                        <div class="col-span-12">
+                            <div class="flex flex-col items-center mb-8">
+                                <label asp-for="ProfileImage" class="inline-block font-semibold text-neutral-600 dark:text-neutral-200 text-sm mb-2">Profile Image</label>
+                                <div class="flex justify-center">
+                                    <div class="avatar-upload">
+                                        <div class="avatar-edit absolute bottom-0 end-0 me-6 mt-4 z-[1] cursor-pointer">
+                                            <input type='file' asp-for="ProfileImage" id="imageUpload" accept=".png, .jpg, .jpeg" hidden>
+                                            <label for="imageUpload" class="w-8 h-8 flex justify-center items-center bg-primary-50 dark:bg-primary-600/25 text-primary-600 dark:text-primary-400 border border-primary-600 hover:bg-primary-100 text-lg rounded-full">
+                                                <iconify-icon icon="solar:camera-outline" class="icon"></iconify-icon>
+                                            </label>
+                                        </div>
+                                        <div class="avatar-preview">
+                                            <div id="imagePreview" style="background-image: url('@(string.IsNullOrEmpty(Model.ExistingProfileImagePath) ? "/images/user_2.png" : Model.ExistingProfileImagePath)')"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Username -->
+                        <div class="md:col-span-6 col-span-12">
+                            <label asp-for="Username" class="form-label">Username <span class="text-danger-600">*</span></label>
+                            <div class="icon-field">
+                                <span class="icon">
+                                    <iconify-icon icon="solar:user-outline"></iconify-icon>
+                                </span>
+                                <input asp-for="Username" class="form-control" placeholder="Enter username">
+                            </div>
+                            <span asp-validation-for="Username" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <!-- Email -->
+                        <div class="md:col-span-6 col-span-12">
+                            <label asp-for="Email" class="form-label">Email <span class="text-danger-600">*</span></label>
+                            <div class="icon-field">
+                                <span class="icon">
+                                    <iconify-icon icon="mage:email"></iconify-icon>
+                                </span>
+                                <input asp-for="Email" class="form-control" placeholder="Enter email address" type="email">
+                            </div>
+                            <span asp-validation-for="Email" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <!-- First Name -->
+                        <div class="md:col-span-6 col-span-12">
+                            <label asp-for="FirstName" class="form-label">First Name <span class="text-danger-600">*</span></label>
+                            <div class="icon-field">
+                                <span class="icon">
+                                    <iconify-icon icon="f7:person"></iconify-icon>
+                                </span>
+                                <input asp-for="FirstName" class="form-control" placeholder="Enter first name">
+                            </div>
+                            <span asp-validation-for="FirstName" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <!-- Last Name -->
+                        <div class="md:col-span-6 col-span-12">
+                            <label asp-for="LastName" class="form-label">Last Name</label>
+                            <div class="icon-field">
+                                <span class="icon">
+                                    <iconify-icon icon="f7:person"></iconify-icon>
+                                </span>
+                                <input asp-for="LastName" class="form-control" placeholder="Enter last name">
+                            </div>
+                            <span asp-validation-for="LastName" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <!-- Phone Number -->
+                        <div class="md:col-span-6 col-span-12">
+                            <label asp-for="PhoneNumber" class="form-label">Phone</label>
+                            <div class="icon-field">
+                                <span class="icon">
+                                    <iconify-icon icon="solar:phone-calling-linear"></iconify-icon>
+                                </span>
+                                <input asp-for="PhoneNumber" class="form-control" placeholder="Enter phone number">
+                            </div>
+                            <span asp-validation-for="PhoneNumber" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <!-- Warehouse -->
+                        <div class="md:col-span-6 col-span-12">
+                            <label asp-for="WarehouseId" class="form-label">Warehouse <span class="text-danger-600">*</span></label>
+                            <div class="icon-field">
+                                <span class="icon">
+                                    <iconify-icon icon="solar:buildings-outline"></iconify-icon>
+                                </span>
+                                <select asp-for="WarehouseId" asp-items="Model.WarehouseOptions" class="form-control form-select" id="warehouseSelect">
+                                    <option value="">Select Warehouse</option>
+                                </select>
+                            </div>
+                            <span asp-validation-for="WarehouseId" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <!-- Client -->
+                        <div class="md:col-span-6 col-span-12">
+                            <label asp-for="ClientId" class="form-label">Client</label>
+                            <div class="icon-field">
+                                <span class="icon">
+                                    <iconify-icon icon="solar:users-group-rounded-outline"></iconify-icon>
+                                </span>
+                                <select asp-for="ClientId" asp-items="Model.ClientOptions" class="form-control form-select" id="clientSelect">
+                                </select>
+                            </div>
+                            <span asp-validation-for="ClientId" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <!-- Roles -->
+                        <div class="md:col-span-6 col-span-12">
+                            <label asp-for="SelectedRoleIds" class="form-label">Roles <span class="text-danger-600">*</span></label>
+                            <div class="relative">
+                                <div class="icon-field">
+                                    <span class="icon">
+                                        <iconify-icon icon="solar:shield-user-outline"></iconify-icon>
+                                    </span>
+                                    <button type="button" id="roleDropdownBtn" class="form-control text-left flex justify-between items-center w-full">
+                                        <span id="selectedRolesText" class="truncate">Select roles...</span>
+                                        <iconify-icon icon="heroicons:chevron-down" class="text-lg flex-shrink-0 ml-2"></iconify-icon>
+                                    </button>
+                                </div>
+                                <div id="roleDropdownMenu" class="absolute z-50 w-full mt-1 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-600 rounded-lg shadow-lg hidden max-h-56 overflow-y-auto">
+                                    <div class="p-3">
+                                        <div class="form-check style-check flex items-center mb-3 pb-2 border-b border-neutral-200 dark:border-neutral-600">
+                                            <input type="checkbox" class="form-check-input" id="selectAllRoles">
+                                            <label class="ms-2 form-check-label font-semibold text-primary-600" for="selectAllRoles">Select All</label>
+                                        </div>
+                                        @foreach (var role in Model.RoleOptions)
+                                        {
+                                            <div class="form-check style-check flex items-center py-2 hover:bg-gray-50 dark:hover:bg-neutral-700 rounded px-2">
+                                                <input type="checkbox" class="form-check-input role-checkbox" name="SelectedRoleIds" id="role_@role.Value" value="@role.Value" @(Model.SelectedRoleIds.Contains(Guid.Parse(role.Value)) ? "checked" : "")>
+                                                <label class="ms-2 form-check-label cursor-pointer flex-1" for="role_@role.Value">@role.Text</label>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                            <span asp-validation-for="SelectedRoleIds" class="text-danger-600 text-sm d-block mt-2"></span>
+                        </div>
+
+                        <!-- Status -->
+                        <div class="md:col-span-6 col-span-12">
+                            <label class="form-label">Status</label>
+                            <div class="flex items-center h-11">
+                                <div class="form-check style-check flex items-center">
+                                    <input asp-for="IsActive" class="form-check-input" type="checkbox">
+                                    <label asp-for="IsActive" class="ms-2 form-check-label">
+                                        <span class="font-medium">Active User</span>
+                                        <small class="block text-neutral-500 dark:text-neutral-400 text-xs">User can login and access the system</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="col-span-12">
+                            <div class="flex items-center justify-end gap-3 mt-6">
+                                <a asp-action="Index" asp-controller="User"
+                                   class="btn bg-neutral-400 border-neutral-400 hover:bg-neutral-500 hover:border-neutral-500 text-white px-8">
+                                    Cancel
+                                </a>
+                                <button type="submit" class="btn btn-primary-600 px-8">
+                                    <iconify-icon icon="solar:diskette-outline"
+                                                  class="mr-2 text-lg"></iconify-icon>
+                                    <span>Save User</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <!-- Include the external script file -->
+    <script src="~/js/pages/users/detail.js" asp-append-version="true"></script>
+}

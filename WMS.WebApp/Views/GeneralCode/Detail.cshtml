@@ -1,0 +1,201 @@
+﻿@model WMS.WebApp.Models.GeneralCodes.GeneralCodeTypePageViewModel
+
+@{
+    var hasEditAccess = Model.HasEditAccess;
+    var isEdit = Model.IsEdit;
+    ViewData["Title"] = isEdit ? "Edit Code Type" : "Add Code Type";
+    ViewData["subTitle"] = isEdit ? "General Codes / Edit Code Type" : "General Codes / Add Code Type";
+}
+
+<div class="grid grid-cols-12 gap-6">
+    <div class="col-span-12">
+        <div class="card border-0">
+            @if (isEdit)
+            {
+                <!-- Code Type Overview Header -->
+                <div class="card-header">
+                    <div class="flex flex-wrap items-center justify-between gap-4">
+                        <div>
+                            <h4 class="mb-2">@Model.CodeType.Name</h4>
+                            <p class="text-neutral-400 mb-0">@(string.IsNullOrEmpty(Model.CodeType.Description) ? "No description provided" : Model.CodeType.Description)</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="bg-blue-100 dark:bg-blue-600/25 text-blue-600 dark:text-blue-400 px-6 py-1.5 rounded-full font-medium text-sm">
+                                @Model.CodeType.CodesCount Code(s)
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="card-body pt-0">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+                        <div class="card shadow-none border border-gray-200 dark:border-neutral-600 dark:bg-neutral-700 rounded-lg h-full bg-gradient-to-r from-blue-600/10 to-bg-white">
+                            <div class="card-body p-4">
+                                <div class="flex flex-wrap items-center justify-between gap-3">
+                                    <div>
+                                        <p class="font-medium text-neutral-900 dark:text-white mb-1 text-sm">Warehouse</p>
+                                        <h6 class="mb-0 dark:text-white text-base">@Model.CodeType.WarehouseName</h6>
+                                    </div>
+                                    <div class="w-10 h-10 bg-blue-600 rounded-full flex justify-center items-center">
+                                        <iconify-icon icon="solar:buildings-outline" class="text-white text-lg mb-0"></iconify-icon>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card shadow-none border border-gray-200 dark:border-neutral-600 dark:bg-neutral-700 rounded-lg h-full bg-gradient-to-r from-green-600/10 to-bg-white">
+                            <div class="card-body p-4">
+                                <div class="flex flex-wrap items-center justify-between gap-3">
+                                    <div>
+                                        <p class="font-medium text-neutral-900 dark:text-white mb-1 text-sm">Total Codes</p>
+                                        <h6 class="mb-0 dark:text-white text-base">@Model.CodeType.CodesCount</h6>
+                                    </div>
+                                    <div class="w-10 h-10 bg-green-600 rounded-full flex justify-center items-center">
+                                        <iconify-icon icon="solar:code-outline" class="text-white text-lg mb-0"></iconify-icon>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+@*                         <div class="card shadow-none border border-gray-200 dark:border-neutral-600 dark:bg-neutral-700 rounded-lg h-full bg-gradient-to-r from-purple-600/10 to-bg-white">
+                            <div class="card-body p-4">
+                                <div class="flex flex-wrap items-center justify-between gap-3">
+                                    <div>
+                                        <p class="font-medium text-neutral-900 dark:text-white mb-1 text-sm">Created</p>
+                                        <h6 class="mb-0 dark:text-white text-base">@Model.CodeType.CreatedAt.ToString("MMM dd, yyyy")</h6>
+                                    </div>
+                                    <div class="w-10 h-10 bg-purple-600 rounded-full flex justify-center items-center">
+                                        <iconify-icon icon="solar:calendar-outline" class="text-white text-lg mb-0"></iconify-icon>
+                                    </div>
+                                </div>
+                            </div>
+                        </div> *@
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="card-header">
+                    <h4 class="mb-0">Add New Code Type</h4>
+                </div>
+            }
+
+            <div class="card-body">
+                <form id="codeTypeForm" asp-action="@(isEdit ? "EditCodeType" : "CreateCodeType")" asp-controller="GeneralCode" method="post">
+                    @if (isEdit)
+                    {
+                        <input type="hidden" asp-for="CodeType.Id" name="Id" />
+                    }
+
+                    <div class="grid grid-cols-12 gap-4">
+                        <!-- Warehouse Selection -->
+                        <div class="md:col-span-12 col-span-12">
+                            <label class="form-label">Warehouse <span class="text-danger-600">*</span></label>
+                            <div class="icon-field">
+                                <span class="icon">
+                                    <iconify-icon icon="solar:buildings-outline"></iconify-icon>
+                                </span>
+                                <select asp-for="CodeType.WarehouseId" name="WarehouseId"
+                                        class="form-control form-select"
+                                        disabled="@(!hasEditAccess || isEdit)"
+                                        required>
+                                    <option value="">Select Warehouse</option>
+                                    @foreach (var warehouse in Model.Warehouses)
+                                    {
+                                        <option value="@warehouse.Id"
+                                                selected="@(warehouse.Id == Model.CodeType.WarehouseId)">
+                                            @warehouse.DisplayText
+                                        </option>
+                                    }
+                                </select>
+                            </div>
+                            <span asp-validation-for="CodeType.WarehouseId" class="text-danger-600 text-sm"></span>
+                            @if (!Model.Warehouses.Any())
+                            {
+                                <small class="text-warning-600">
+                                    <iconify-icon icon="solar:warning-outline" class="mr-1"></iconify-icon>
+                                    No active warehouses available. Please create a warehouse first.
+                                </small>
+                            }
+                            @if (isEdit)
+                            {
+                                <small class="text-info-600">
+                                    <iconify-icon icon="solar:info-circle-outline" class="mr-1"></iconify-icon>
+                                    Warehouse cannot be changed after code type creation.
+                                </small>
+                            }
+                        </div>
+
+                        <!-- Code Type Name -->
+                        <div class="md:col-span-12 col-span-12">
+                            <label class="form-label">Code Type Name <span class="text-danger-600">*</span></label>
+                            <div class="icon-field">
+                                <span class="icon">
+                                    <iconify-icon icon="solar:layers-outline"></iconify-icon>
+                                </span>
+                                <input type="text"
+                                       asp-for="CodeType.Name"
+                                       name="Name"
+                                       class="form-control"
+                                       placeholder="Enter Code Type Name (e.g., ORDER_STATUS, PRIORITY_LEVEL)"
+                                       readonly="@(!hasEditAccess)"
+                                       required>
+                            </div>
+                            <span asp-validation-for="CodeType.Name" class="text-danger-600 text-sm"></span>
+                            <small class="text-gray-500 mt-1">
+                                <iconify-icon icon="solar:info-circle-outline" class="mr-1"></iconify-icon>
+                                Use UPPERCASE with underscores for consistency (e.g., ORDER_STATUS, TASK_PRIORITY)
+                            </small>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="md:col-span-12 col-span-12">
+                            <label class="form-label">Description</label>
+                            <textarea asp-for="CodeType.Description" name="Description"
+                                      class="form-control"
+                                      rows="4"
+                                      placeholder="Enter description for this code type (optional)..."
+                                      readonly="@(!hasEditAccess)"></textarea>
+                            <span asp-validation-for="CodeType.Description" class="text-danger-600 text-sm"></span>
+                            <small class="text-gray-500 mt-1">
+                                Explain what this code type is used for (e.g., "Status values for order processing")
+                            </small>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="col-span-12">
+                            @if (hasEditAccess)
+                            {
+                                <div class="flex items-center justify-end gap-3 mt-4">
+                                    <a asp-controller="GeneralCode" asp-action="Index"
+                                       class="btn bg-neutral-400 border-neutral-400 hover:bg-neutral-500 hover:border-neutral-500 text-white px-8">
+                                        Cancel
+                                    </a>
+                                    <button type="submit" class="btn btn-primary-600 px-8">
+                                        @(isEdit ? "Update Code Type" : "Create Code Type")
+                                    </button>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="flex items-center justify-end gap-3 mt-4">
+                                    <a asp-controller="GeneralCode" asp-action="Index"
+                                       class="btn bg-neutral-400 border-neutral-400 hover:bg-neutral-500 hover:border-neutral-500 text-white px-8">
+                                        Back To List
+                                    </a>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </form>
+
+                <input type="hidden" id="currentCodeTypeId" value="@Model.CodeType.Id" />
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/pages/general-codes/detail.js" asp-append-version="true"></script>
+}

@@ -1,0 +1,620 @@
+﻿@model WMS.WebApp.Models.Locations.LocationPageViewModel
+
+@{
+    var hasEditAccess = Model.HasEditAccess;
+    var isEdit = Model.IsEdit;
+    ViewData["Title"] = isEdit ? "Edit Location" : "Add Location";
+    ViewData["subTitle"] = isEdit ? "Location / Edit Location" : "Location / Add Location";
+}
+
+<div class="grid grid-cols-12 gap-6">
+    <div class="col-span-12">
+        <div class="card border-0">
+            @if (isEdit)
+            {
+                <!-- Location Overview Header -->
+                <div class="card-header">
+                    <div class="flex flex-wrap items-center justify-between gap-4">
+                        <div>
+                            <h4 class="mb-2">@Model.Location.Name</h4>
+                            <p class="text-neutral-400 mb-0">Location Code: #@Model.Location.Code</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="@(Model.Location.IsActive ? "bg-success-100 dark:bg-success-600/25 text-success-600 dark:text-success-400" : "bg-danger-100 dark:bg-danger-600/25 text-danger-600 dark:text-danger-400") px-6 py-1.5 rounded-full font-medium text-sm">
+                                @(Model.Location.IsActive ? "Active" : "Inactive")
+                            </span>
+                            @if (Model.Location.IsEmpty)
+                            {
+                                <span class="bg-green-100 dark:bg-green-600/25 text-green-600 dark:text-green-400 px-6 py-1.5 rounded-full font-medium text-sm">
+                                    Empty
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="bg-blue-100 dark:bg-blue-600/25 text-blue-600 dark:text-blue-400 px-6 py-1.5 rounded-full font-medium text-sm">
+                                    Occupied
+                                </span>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="card-body pt-0">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                        <div class="card shadow-none border border-gray-200 dark:border-neutral-600 dark:bg-neutral-700 rounded-lg h-full bg-gradient-to-r from-blue-600/10 to-bg-white">
+                            <div class="card-body p-4">
+                                <div class="flex flex-wrap items-center justify-between gap-3">
+                                    <div>
+                                        <p class="font-medium text-neutral-900 dark:text-white mb-1 text-sm">Warehouse</p>
+                                        <h6 class="mb-0 dark:text-white text-base">@Model.Location.WarehouseName</h6>
+                                    </div>
+                                    <div class="w-10 h-10 bg-blue-600 rounded-full flex justify-center items-center">
+                                        <iconify-icon icon="solar:buildings-outline" class="text-white text-lg mb-0"></iconify-icon>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card shadow-none border border-gray-200 dark:border-neutral-600 dark:bg-neutral-700 rounded-lg h-full bg-gradient-to-r from-green-600/10 to-bg-white">
+                            <div class="card-body p-4">
+                                <div class="flex flex-wrap items-center justify-between gap-3">
+                                    <div>
+                                        <p class="font-medium text-neutral-900 dark:text-white mb-1 text-sm">Zone</p>
+                                        <h6 class="mb-0 dark:text-white text-base">@Model.Location.ZoneName</h6>
+                                    </div>
+                                    <div class="w-10 h-10 bg-blue-600 rounded-full flex justify-center items-center">
+                                        <iconify-icon icon="solar:layers-outline" class="text-white text-lg mb-0"></iconify-icon>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card shadow-none border border-gray-200 dark:border-neutral-600 dark:bg-neutral-700 rounded-lg h-full bg-gradient-to-r from-purple-600/10 to-bg-white">
+                            <div class="card-body p-4">
+                                <div class="flex flex-wrap items-center justify-between gap-3">
+                                    <div>
+                                        <p class="font-medium text-neutral-900 dark:text-white mb-1 text-sm">Position</p>
+                                        <h6 class="mb-0 dark:text-white text-base">@Model.Location.GetPositionDisplay()</h6>
+                                    </div>
+                                    <div class="w-10 h-10 bg-purple-600 rounded-full flex justify-center items-center">
+                                        <iconify-icon icon="solar:map-point-outline" class="text-white text-lg mb-0"></iconify-icon>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card shadow-none border border-gray-200 dark:border-neutral-606 dark:bg-neutral-700 rounded-lg h-full bg-gradient-to-r from-orange-600/10 to-bg-white">
+                            <div class="card-body p-4">
+                                <div class="flex flex-wrap items-center justify-between gap-3">
+                                    <div>
+                                        <p class="font-medium text-neutral-900 dark:text-white mb-1 text-sm">Inventory</p>
+                                        <h6 class="mb-0 dark:text-white text-base">@Model.Location.InventoryCount items</h6>
+                                    </div>
+                                    <div class="w-10 h-10 bg-purple-600 rounded-full flex justify-center items-center">
+                                        <iconify-icon icon="solar:box-outline" class="text-white text-lg mb-0"></iconify-icon>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="card-header">
+                    <h4 class="mb-0">Add New Location</h4>
+                </div>
+            }
+
+            <div class="card-body">
+                <form id="locationForm" asp-action="@(isEdit ? "Edit" : "Create")" asp-controller="Location" method="post">
+                    @if (isEdit)
+                    {
+                        <input type="hidden" asp-for="Location.Id" name="Id" />
+                    }
+
+                    <div class="grid grid-cols-12 gap-6">
+                        <!-- Warehouse Selection -->
+                        <div class="md:col-span-6 col-span-12">
+                            <label class="form-label">Warehouse <span class="text-danger-600">*</span></label>
+                            <div class="icon-field">
+                                <span class="icon">
+                                    <iconify-icon icon="solar:buildings-outline"></iconify-icon>
+                                </span>
+                                <select id="warehouseSelect" name="WarehouseId"
+                                        class="form-control form-select"
+                                        disabled="@(!hasEditAccess || isEdit)"
+                                        required>
+                                    <option value="">Select Warehouse</option>
+                                    @foreach (var warehouse in Model.Warehouses)
+                                    {
+                                        <option value="@warehouse.Id"
+                                                selected="@(warehouse.Id == Model.Location.WarehouseId)">
+                                            @warehouse.DisplayText
+                                        </option>
+                                    }
+                                </select>
+                            </div>
+                            @if (!Model.Warehouses.Any())
+                            {
+                                <small class="text-warning-600">
+                                    <iconify-icon icon="solar:warning-outline" class="mr-1"></iconify-icon>
+                                    No active warehouses available. Please create a warehouse first.
+                                </small>
+                            }
+                            @if (isEdit)
+                            {
+                                <small class="text-info-600">
+                                    <iconify-icon icon="solar:info-circle-outline" class="mr-1"></iconify-icon>
+                                    Warehouse cannot be changed after location creation.
+                                </small>
+                            }
+                        </div>
+
+                        <!-- Zone Selection -->
+                        <div class="md:col-span-6 col-span-12">
+                            <label class="form-label">Zone <span class="text-danger-600">*</span></label>
+                            <div class="icon-field">
+                                <span class="icon">
+                                    <iconify-icon icon="solar:layers-outline"></iconify-icon>
+                                </span>
+                                <select asp-for="Location.ZoneId" name="ZoneId" id="zoneSelect"
+                                        class="form-control form-select"
+                                        disabled="@(!hasEditAccess)"
+                                        required>
+                                    <option value="">Select Zone</option>
+                                    @if (isEdit && Model.Location.ZoneId != Guid.Empty)
+                                    {
+                                        <option value="@Model.Location.ZoneId" selected="true">@Model.Location.ZoneName</option>
+                                    }
+                                </select>
+                            </div>
+                            <span asp-validation-for="Location.ZoneId" class="text-danger-600 text-sm"></span>
+                            <div id="zone-loading" class="hidden">
+                                <small class="text-blue-600">
+                                    <iconify-icon icon="solar:refresh-outline" class="mr-1 animate-spin"></iconify-icon>
+                                    Loading zones...
+                                </small>
+                            </div>
+                            <div id="zone-empty" class="hidden">
+                                <small class="text-warning-600">
+                                    <iconify-icon icon="solar:warning-outline" class="mr-1"></iconify-icon>
+                                    No zones available for selected warehouse.
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- Basic Information Section -->
+                        <div class="col-span-12">
+                            <h6 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                                <iconify-icon icon="solar:info-circle-outline" class="text-blue-600"></iconify-icon>
+                                Basic Information
+                            </h6>
+                        </div>
+
+                        <!-- Location Name -->
+                        <div class="md:col-span-6 col-span-12">
+                            <label class="form-label">Location Name <span class="text-danger-600">*</span></label>
+                            <div class="icon-field">
+                                <span class="icon">
+                                    <iconify-icon icon="solar:tag-outline"></iconify-icon>
+                                </span>
+                                <input type="text"
+                                       asp-for="Location.Name"
+                                       name="Name"
+                                       class="form-control uppercase"
+                                       placeholder="Enter Location Name"
+                                       readonly="@(!hasEditAccess)"
+                                       required>
+                            </div>
+                            <span asp-validation-for="Location.Name" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <!-- Location Code -->
+                        <div class="md:col-span-6 col-span-12">
+                            <label class="form-label">Location Code <span class="text-danger-600">*</span></label>
+                            <div class="icon-field">
+                                <span class="icon">
+                                    <iconify-icon icon="solar:code-outline"></iconify-icon>
+                                </span>
+                                <input type="text"
+                                       asp-for="Location.Code"
+                                       name="Code"
+                                       class="form-control font-mono uppercase"
+                                       placeholder="Enter Location Code"
+                                       readonly="@(!hasEditAccess)"
+                                       required>
+                            </div>
+                            <span asp-validation-for="Location.Code" class="text-danger-600 text-sm"></span>
+                        </div>
+
+@*                         <!-- Location Type -->
+                        <div class="md:col-span-6 col-span-12">
+                            <label class="form-label">Location Type</label>
+                            <select asp-for="Location.Type" name="Type"
+                                    class="form-control form-select"
+                                    disabled="@(!hasEditAccess)">
+                                <option value="Floor">Floor</option>
+                                <option value="Rack">Rack</option>
+                                <option value="Bin">Bin</option>
+                                <option value="Bulk">Bulk</option>
+                                <option value="Staging">Staging</option>
+                                <option value="Dock">Dock</option>
+                                <option value="Overflow">Overflow</option>
+                            </select>
+                            <span asp-validation-for="Location.Type" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <!-- Access Type -->
+                        <div class="md:col-span-6 col-span-12">
+                            <label class="form-label">Access Type</label>
+                            <select asp-for="Location.AccessType" name="AccessType"
+                                    class="form-control form-select"
+                                    disabled="@(!hasEditAccess)">
+                                <option value="Manual">Manual</option>
+                                <option value="Forklift">Forklift</option>
+                                <option value="Crane">Crane</option>
+                                <option value="Automated">Automated</option>
+                                <option value="Restricted">Restricted</option>
+                            </select>
+                            <span asp-validation-for="Location.AccessType" class="text-danger-600 text-sm"></span>
+                        </div> *@
+
+                        <!-- Position Information Section -->
+                        <div class="col-span-12">
+                            <h6 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                                <iconify-icon icon="solar:map-point-outline" class="text-green-600"></iconify-icon>
+                                Position Information
+                            </h6>
+                        </div>
+
+                        <!-- Row -->
+                        <div class="md:col-span-3 col-span-12">
+                            <label class="form-label" asp-for="Location.Row"></label>
+                            <div class="icon-field">
+                                <span class="icon">
+                                    <iconify-icon icon="solar:align-horizontal-outline"></iconify-icon>
+                                </span>
+                                <input type="text"
+                                       asp-for="Location.Row"
+                                       name="Row"
+                                       class="form-control uppercase"
+                                       placeholder="A"
+                                       maxlength="1"
+                                       readonly="@(!hasEditAccess)">
+                            </div>
+                            <span asp-validation-for="Location.Row" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <!-- Bay -->
+                        <div class="md:col-span-3 col-span-12">
+                            <label class="form-label" asp-for="Location.Bay"></label>
+                            <div class="icon-field">
+                                <span class="icon">
+                                    <iconify-icon icon="solar:align-vertical-outline"></iconify-icon>
+                                </span>
+                                <input type="number"
+                                       asp-for="Location.Bay"
+                                       name="Bay"
+                                       class="form-control"
+                                       placeholder="01"
+                                       min="1" max="999"
+                                       readonly="@(!hasEditAccess)">
+                            </div>
+                            <span asp-validation-for="Location.Bay" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <!-- Level -->
+                        <div class="md:col-span-3 col-span-12">
+                            <label class="form-label" asp-for="Location.Level"></label>
+                            <div class="icon-field">
+                                <span class="icon">
+                                    <iconify-icon icon="solar:ladder-outline"></iconify-icon>
+                                </span>
+                                <input type="number"
+                                       asp-for="Location.Level"
+                                       name="Level"
+                                       class="form-control"
+                                       placeholder="1"
+                                       min="1" max="999"
+                                       readonly="@(!hasEditAccess)">
+                            </div>
+                            <span asp-validation-for="Location.Level" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <!-- Status -->
+                        <div class="md:col-span-3 col-span-12">
+                            <label class="form-label">Status</label>
+                            <select asp-for="Location.IsActive" name="IsActive"
+                                    class="form-control form-select"
+                                    disabled="@(!hasEditAccess)">
+                                <option value="true">Active</option>
+                                <option value="false">Inactive</option>
+                            </select>
+                            <span asp-validation-for="Location.IsActive" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <!-- Additional Position Fields -->
+                        <div class="md:col-span-4 col-span-12">
+                            <label class="form-label" asp-for="Location.Aisle"></label>
+                            <input type="text"
+                                   asp-for="Location.Aisle"
+                                   name="Aisle"
+                                   class="form-control"
+                                   placeholder="A01"
+                                   readonly="@(!hasEditAccess)">
+                            <span asp-validation-for="Location.Aisle" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <div class="md:col-span-4 col-span-12">
+                            <label class="form-label" asp-for="Location.Side"></label>
+                            <select asp-for="Location.Side" name="Side"
+                                    class="form-control form-select"
+                                    disabled="@(!hasEditAccess)">
+                                <option value="">Select Side</option>
+                                <option value="L">Left (L)</option>
+                                <option value="R">Right (R)</option>
+                            </select>
+                            <span asp-validation-for="Location.Side" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <div class="md:col-span-4 col-span-12">
+                            <label class="form-label" asp-for="Location.Bin"></label>
+                            <input type="text"
+                                   asp-for="Location.Bin"
+                                   name="Bin"
+                                   class="form-control"
+                                   placeholder="1"
+                                   readonly="@(!hasEditAccess)">
+                            <span asp-validation-for="Location.Bin" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <!-- Capacity Information Section -->
+                        <div class="col-span-12">
+                            <h6 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                                <iconify-icon icon="solar:scale-outline" class="text-purple-600"></iconify-icon>
+                                Capacity Information
+                            </h6>
+                        </div>
+
+                        <div class="md:col-span-4 col-span-12">
+                            <label class="form-label" asp-for="Location.MaxWeight"></label>
+                            <div class="icon-field">
+                                <span class="icon">
+                                    <iconify-icon icon="solar:scale-outline"></iconify-icon>
+                                </span>
+                                <input type="number"
+                                       asp-for="Location.MaxWeight"
+                                       name="MaxWeight"
+                                       class="form-control"
+                                       placeholder="1000"
+                                       min="0" step="0.01"
+                                       readonly="@(!hasEditAccess)">
+                            </div>
+                            <span asp-validation-for="Location.MaxWeight" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <div class="md:col-span-4 col-span-12">
+                            <label class="form-label" asp-for="Location.MaxVolume"></label>
+                            <div class="icon-field">
+                                <span class="icon">
+                                    <iconify-icon icon="solar:box-outline"></iconify-icon>
+                                </span>
+                                <input type="number"
+                                       asp-for="Location.MaxVolume"
+                                       name="MaxVolume"
+                                       class="form-control"
+                                       placeholder="5.0"
+                                       min="0" step="0.01"
+                                       readonly="@(!hasEditAccess)">
+                            </div>
+                            <span asp-validation-for="Location.MaxVolume" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <div class="md:col-span-4 col-span-12">
+                            <label class="form-label" asp-for="Location.MaxItems"></label>
+                            <div class="icon-field">
+                                <span class="icon">
+                                    <iconify-icon icon="solar:hashtag-outline"></iconify-icon>
+                                </span>
+                                <input type="number"
+                                       asp-for="Location.MaxItems"
+                                       name="MaxItems"
+                                       class="form-control"
+                                       placeholder="10"
+                                       min="0"
+                                       readonly="@(!hasEditAccess)">
+                            </div>
+                            <span asp-validation-for="Location.MaxItems" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <!-- Physical Dimensions Section -->
+                        <div class="col-span-12">
+                            <h6 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                                <iconify-icon icon="solar:ruler-outline" class="text-orange-600"></iconify-icon>
+                                Physical Dimensions
+                            </h6>
+                        </div>
+
+                        <div class="md:col-span-4 col-span-12">
+                            <label class="form-label" asp-for="Location.Length"></label>
+                            <div class="icon-field">
+                                <span class="icon">
+                                    <iconify-icon icon="solar:ruler-outline"></iconify-icon>
+                                </span>
+                                <input type="number"
+                                       asp-for="Location.Length"
+                                       name="Length"
+                                       class="form-control"
+                                       placeholder="1.2"
+                                       min="0" step="0.01"
+                                       readonly="@(!hasEditAccess)">
+                            </div>
+                            <span asp-validation-for="Location.Length" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <div class="md:col-span-4 col-span-12">
+                            <label class="form-label" asp-for="Location.Width"></label>
+                            <div class="icon-field">
+                                <span class="icon">
+                                    <iconify-icon icon="solar:ruler-outline"></iconify-icon>
+                                </span>
+                                <input type="number"
+                                       asp-for="Location.Width"
+                                       name="Width"
+                                       class="form-control"
+                                       placeholder="1.0"
+                                       min="0" step="0.01"
+                                       readonly="@(!hasEditAccess)">
+                            </div>
+                            <span asp-validation-for="Location.Width" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <div class="md:col-span-4 col-span-12">
+                            <label class="form-label" asp-for="Location.Height"></label>
+                            <div class="icon-field">
+                                <span class="icon">
+                                    <iconify-icon icon="solar:ruler-outline"></iconify-icon>
+                                </span>
+                                <input type="number"
+                                       asp-for="Location.Height"
+                                       name="Height"
+                                       class="form-control"
+                                       placeholder="2.5"
+                                       min="0" step="0.01"
+                                       readonly="@(!hasEditAccess)">
+                            </div>
+                            <span asp-validation-for="Location.Height" class="text-danger-600 text-sm"></span>
+                        </div>
+
+ @*                        <!-- Additional Information Section -->
+                        <div class="col-span-12">
+                            <h6 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                                <iconify-icon icon="solar:settings-outline" class="text-gray-600"></iconify-icon>
+                                Additional Information
+                            </h6>
+                        </div>
+
+                        <div class="md:col-span-6 col-span-12">
+                            <label class="form-label" asp-for="Location.PickingPriority"></label>
+                            <input type="number"
+                                   asp-for="Location.PickingPriority"
+                                   name="PickingPriority"
+                                   class="form-control"
+                                   placeholder="1"
+                                   min="0"
+                                   readonly="@(!hasEditAccess)">
+                            <span asp-validation-for="Location.PickingPriority" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <div class="md:col-span-6 col-span-12">
+                            <label class="form-label" asp-for="Location.TemperatureZone"></label>
+                            <select asp-for="Location.TemperatureZone" name="TemperatureZone"
+                                    class="form-control form-select"
+                                    disabled="@(!hasEditAccess)">
+                                <option value="">Select Temperature Zone</option>
+                                @foreach (var zone in Model.TemperatureZoneOptions)
+                                {
+                                    <option value="@zone">@zone</option>
+                                }
+                            </select>
+                            <span asp-validation-for="Location.TemperatureZone" class="text-danger-600 text-sm"></span>
+                        </div> *@
+
+                        <div class="md:col-span-12 col-span-12">
+                            <label class="form-label">Barcode</label>
+                            <div class="icon-field">
+                                <span class="icon">
+                                    <iconify-icon icon="solar:qr-code-outline"></iconify-icon>
+                                </span>
+                                <input type="text"
+                                       asp-for="Location.Barcode"
+                                       name="Barcode"
+                                       class="form-control font-mono"
+                                       placeholder="Location barcode"
+                                       readonly="@(!hasEditAccess)">
+                            </div>
+                            <span asp-validation-for="Location.Barcode" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <!-- 3D Coordinates Section -->
+                        <div class="col-span-12">
+                            <h6 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                                <iconify-icon icon="solar:compass-outline" class="text-indigo-600"></iconify-icon>
+                                3D Coordinates (Optional)
+                            </h6>
+                        </div>
+
+                        <div class="md:col-span-4 col-span-12">
+                            <label class="form-label" asp-for="Location.XCoordinate"></label>
+                            <input type="number"
+                                   asp-for="Location.XCoordinate"
+                                   name="XCoordinate"
+                                   class="form-control"
+                                   placeholder="10.5"
+                                   step="0.01"
+                                   readonly="@(!hasEditAccess)">
+                            <span asp-validation-for="Location.XCoordinate" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <div class="md:col-span-4 col-span-12">
+                            <label class="form-label" asp-for="Location.YCoordinate"></label>
+                            <input type="number"
+                                   asp-for="Location.YCoordinate"
+                                   name="YCoordinate"
+                                   class="form-control"
+                                   placeholder="20.3"
+                                   step="0.01"
+                                   readonly="@(!hasEditAccess)">
+                            <span asp-validation-for="Location.YCoordinate" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <div class="md:col-span-4 col-span-12">
+                            <label class="form-label" asp-for="Location.ZCoordinate"></label>
+                            <input type="number"
+                                   asp-for="Location.ZCoordinate"
+                                   name="ZCoordinate"
+                                   class="form-control"
+                                   placeholder="2.5"
+                                   step="0.01"
+                                   readonly="@(!hasEditAccess)">
+                            <span asp-validation-for="Location.ZCoordinate" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="col-span-12">
+                            @if (hasEditAccess)
+                            {
+                                <div class="flex items-center justify-end gap-3 mt-6">
+                                    <a asp-controller="Location" asp-action="Index"
+                                       class="btn bg-neutral-400 border-neutral-400 hover:bg-neutral-500 hover:border-neutral-500 text-white px-8">
+                                        Cancel
+                                    </a>
+                                    <button type="submit" class="btn btn-primary-600 px-8">
+                                        @(isEdit ? "Update Location" : "Create Location")
+                                    </button>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="flex items-center justify-end gap-3 mt-6">
+                                    <a asp-controller="Location" asp-action="Index"
+                                       class="btn bg-neutral-400 border-neutral-400 hover:bg-neutral-500 hover:border-neutral-500 text-white px-8">
+                                        Back To List
+                                    </a>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </form>
+
+                <input type="hidden" id="currentLocationId" value="@Model.Location.Id" />
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/pages/locations/detail.js" asp-append-version="true"></script>
+}

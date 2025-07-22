@@ -1,0 +1,93 @@
+﻿@model WMS.WebApp.Models.Locations.LocationBarcodeViewModel
+
+@{
+    ViewData["Title"] = "Location Barcode";
+    ViewData["subTitle"] = "Location / Generate Location Barcode";
+}
+
+<div class="grid grid-cols-12 gap-6">
+    <div class="col-span-12">
+        <div class="card border-0">
+            <div class="card-body">
+                <form id="locationBarcodeForm" asp-action="GenerateBarcode" asp-controller="Location" method="post">
+                    <div class="grid grid-cols-12 gap-6">
+                        <!-- Warehouse Selection -->
+                        <div class="md:col-span-6 col-span-12">
+                            <label class="form-label">Warehouse <span class="text-danger-600">*</span></label>
+                            <div class="icon-field">
+                                <span class="icon">
+                                    <iconify-icon icon="solar:buildings-outline"></iconify-icon>
+                                </span>
+                                <select asp-for="WarehouseId" id="warehouseSelect" name="WarehouseId"
+                                        class="form-control form-select"
+                                        required>
+                                    <option value="">Select Warehouse</option>
+                                    @foreach (var warehouse in Model.Warehouses)
+                                    {
+                                        <option value="@warehouse.Id">
+                                            @warehouse.DisplayText
+                                        </option>
+                                    }
+                                </select>
+                            </div>
+                            <span asp-validation-for="WarehouseId" class="text-danger-600 text-sm"></span>
+                            @if (!Model.Warehouses.Any())
+                            {
+                                <small class="text-warning-600">
+                                    <iconify-icon icon="solar:warning-outline" class="mr-1"></iconify-icon>
+                                    No active warehouses available. Please create a warehouse first.
+                                </small>
+                            }
+                        </div>
+
+                        <!-- Zone Selection -->
+                        <div class="md:col-span-6 col-span-12">
+                            <label class="form-label">Zone <span class="text-danger-600">*</span></label>
+                            <div class="icon-field">
+                                <span class="icon">
+                                    <iconify-icon icon="solar:layers-outline"></iconify-icon>
+                                </span>
+                                <select asp-for="ZoneId" name="ZoneId" id="zoneSelect"
+                                        class="form-control form-select"
+                                        required>
+                                    <option value="">Select Zone</option>
+                                </select>
+                            </div>
+                            <span asp-validation-for="ZoneId" class="text-danger-600 text-sm"></span>
+                            <div id="zone-loading" class="hidden">
+                                <small class="text-blue-600">
+                                    <iconify-icon icon="solar:refresh-outline" class="mr-1 animate-spin"></iconify-icon>
+                                    Loading zones...
+                                </small>
+                            </div>
+                            <div id="zone-empty" class="hidden">
+                                <small class="text-warning-600">
+                                    <iconify-icon icon="solar:warning-outline" class="mr-1"></iconify-icon>
+                                    No zones available for selected warehouse.
+                                </small>
+                            </div>
+                        </div>
+
+
+                        <!-- Form Actions -->
+                        <div class="col-span-12">
+                                <div class="flex items-center justify-end gap-3 mt-6">
+                                    <a asp-controller="Location" asp-action="Index"
+                                       class="btn bg-neutral-400 border-neutral-400 hover:bg-neutral-500 hover:border-neutral-500 text-white px-8">
+                                        Back To List
+                                    </a>
+                                    <button type="submit" class="btn btn-primary-600 px-8">
+                                        Generate Barcode
+                                    </button>
+                                </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/pages/locations/barcode.js" asp-append-version="true"></script>
+}

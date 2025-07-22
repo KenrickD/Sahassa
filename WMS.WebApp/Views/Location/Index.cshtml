@@ -1,0 +1,145 @@
+﻿@model WMS.WebApp.Models.Locations.LocationListViewModel
+
+@{
+    ViewData["Title"] = "Locations";
+    ViewData["subTitle"] = "Location Management";
+}
+
+<div class="grid grid-cols-12">
+    <div class="col-span-12">
+        <div class="card border-0 overflow-hidden">
+            <div class="card-header flex items-center justify-between">
+                <h6 class="card-title mb-0 text-lg">Location List</h6>
+                <div class="flex items-center gap-2">
+                    <!-- Generate Barcode Button -->
+                    <a href="@Url.Action("Barcode", "Location")" asp-authorize-permission="Location.Write"
+                       class="btn bg-blue-600 hover:bg-blue-700 text-white text-sm btn-sm px-3 py-3 rounded-lg flex items-center gap-2"
+                       title="Generate Barcode">
+                        <iconify-icon icon="solar:code-scan-outline" class="icon text-xl line-height-1"></iconify-icon>
+                        Barcode
+                    </a>
+
+                    <!-- Download Template Button -->
+                    <a href="@Url.Action("DownloadTemplate", "Location")" asp-authorize-permission="Location.Write"
+                       class="btn bg-blue-600 hover:bg-blue-700 text-white text-sm btn-sm px-3 py-3 rounded-lg flex items-center gap-2"
+                       title="Download Import Template">
+                        <iconify-icon icon="solar:download-outline" class="icon text-xl line-height-1"></iconify-icon>
+                        Template
+                    </a>
+
+                    <!-- Import Locations Button -->
+                    <a asp-action="Import" asp-controller="Location" asp-authorize-permission="Location.Write"
+                       class="btn btn-primary text-sm btn-sm px-3 py-3 rounded-lg flex items-center gap-2"
+                       title="Import Locations">
+                        <iconify-icon icon="solar:upload-outline" class="icon text-xl line-height-1"></iconify-icon>
+                        Import
+                    </a>
+
+                    <!-- Export Locations Button -->
+                    <a href="@Url.Action("ExportLocations", "Location")"
+                       class="btn bg-purple-600 hover:bg-purple-700 text-white text-sm btn-sm px-3 py-3 rounded-lg flex items-center gap-2"
+                       title="Export Locations">
+                        <iconify-icon icon="solar:export-outline" class="icon text-xl line-height-1"></iconify-icon>
+                        Export
+                    </a>
+
+                    <!-- Add Location Button -->
+                    <a asp-action="Create" asp-controller="Location" asp-authorize-permission="Location.Write"
+                       class="btn btn-primary text-sm btn-sm px-3 py-3 rounded-lg flex items-center gap-2">
+                        <iconify-icon icon="ic:baseline-plus" class="icon text-xl line-height-1"></iconify-icon>
+                        Add Location
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Filter Controls -->
+                <div id="filter-controls" class="flex justify-between items-center mb-4" style="display: none;">
+                    <div class="flex items-center gap-3">
+                        <!-- Warehouse Filter -->
+                        <div class="flex items-center gap-2">
+                            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Warehouse:</label>
+                            <select id="warehouse-filter" class="form-select text-sm min-w-32 border border-neutral-200 dark:border-neutral-600 rounded-lg bg-white dark:bg-gray-800 text-neutral-800 dark:text-white">
+                                <option value="">All Warehouses</option>
+                            </select>
+                        </div>
+
+                        <!-- Zone Filter -->
+                        <div class="flex items-center gap-2">
+                            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Zone:</label>
+                            <select id="zone-filter" class="form-select text-sm min-w-32 border border-neutral-200 dark:border-neutral-600 rounded-lg bg-white dark:bg-gray-800 text-neutral-800 dark:text-white" disabled>
+                                <option value="">All Zones</option>
+                            </select>
+                        </div>
+
+                        <!-- Clear Filters Button -->
+                        <button id="clear-filters" class="btn bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 text-sm px-3 py-2 rounded-lg">
+                            <iconify-icon icon="solar:refresh-outline" class="icon text-base mr-1"></iconify-icon>
+                            Clear
+                        </button>
+                    </div>
+                    <div class="flex-1 text-right">
+                        <!-- Search will be positioned here by DataTables -->
+                    </div>
+                </div>
+
+                <table id="locations-table" class="border border-neutral-200 dark:border-neutral-600 rounded-lg border-separate">
+                    <thead>
+                        <tr>
+                            <th scope="col" class="text-neutral-800 dark:text-white">
+                                <div class="form-check style-check flex items-center">
+                                    <input class="form-check-input" id="select-all" type="checkbox">
+                                    <label class="ms-2 form-check-label" for="select-all">
+                                        ID
+                                    </label>
+                                </div>
+                            </th>
+                            <th scope="col" class="text-neutral-800 dark:text-white">
+                                <div class="flex items-center gap-2">
+                                    Warehouse
+                                </div>
+                            </th>
+                            <th scope="col" class="text-neutral-800 dark:text-white">
+                                <div class="flex items-center gap-2">
+                                    Zone
+                                </div>
+                            </th>
+                            <th scope="col" class="text-neutral-800 dark:text-white">
+                                <div class="flex items-center gap-2">
+                                    Name
+                                </div>
+                            </th>
+                            <th scope="col" class="text-neutral-800 dark:text-white">
+                                <div class="flex items-center gap-2">
+                                    Code
+                                </div>
+                            </th>
+                            <th scope="col" class="text-neutral-800 dark:text-white">
+                                <div class="flex items-center gap-2">
+                                    Position
+                                </div>
+                            </th>
+                            <th scope="col" class="text-neutral-800 dark:text-white">
+                                <div class="flex items-center gap-2">
+                                    Status
+                                </div>
+                            </th>
+                            <th scope="col" class="text-neutral-800 dark:text-white">
+                                <div class="flex items-center gap-2">
+                                    Actions
+                                </div>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- DataTables will populate this -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <!-- Include the external script file -->
+    <script src="~/js/pages/Locations/list.js" asp-append-version="true"></script>
+}

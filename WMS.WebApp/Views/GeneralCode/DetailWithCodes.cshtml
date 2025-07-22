@@ -1,0 +1,300 @@
+﻿@model WMS.WebApp.Models.GeneralCodes.GeneralCodeTypeWithCodesViewModel
+
+@{
+    ViewData["Title"] = "Code Type Details";
+    ViewData["subTitle"] = $"General Codes / {Model.CodeType.Name}";
+    var hasEditAccess = Model.HasEditAccess;
+}
+
+<div class="grid grid-cols-12 gap-6">
+    <!-- Code Type Overview -->
+    <div class="col-span-12">
+        <div class="card border-0">
+            <div class="card-header">
+                <div class="flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                        <h4 class="mb-2">@Model.CodeType.Name</h4>
+                        <p class="text-neutral-400 mb-0">
+                            @(string.IsNullOrEmpty(Model.CodeType.Description) ? "No description provided" : Model.CodeType.Description)
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        @if (hasEditAccess)
+                        {
+                            <a asp-action="EditCodeType" asp-route-id="@Model.CodeType.Id"
+                               class="btn bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700">
+                                <iconify-icon icon="lucide:edit" class="text-lg"></iconify-icon>
+                                Edit Code Type
+                            </a>
+                        }
+                        <a asp-action="Index"
+                           class="btn bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-300 dark:hover:bg-gray-600">
+                            <iconify-icon icon="solar:arrow-left-outline" class="text-lg"></iconify-icon>
+                            Back to List
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistics Cards -->
+            <div class="card-body pt-0">
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div class="card shadow-none border border-gray-200 dark:border-neutral-600 dark:bg-neutral-700 rounded-lg h-full bg-gradient-to-r from-blue-600/10 to-bg-white">
+                        <div class="card-body p-4">
+                            <div class="flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                    <p class="font-medium text-neutral-900 dark:text-white mb-1 text-sm">Warehouse</p>
+                                    <h6 class="mb-0 dark:text-white text-base">@Model.CodeType.WarehouseName</h6>
+                                </div>
+                                <div class="w-10 h-10 bg-blue-600 rounded-full flex justify-center items-center">
+                                    <iconify-icon icon="solar:buildings-outline" class="text-white text-lg mb-0"></iconify-icon>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card shadow-none border border-gray-200 dark:border-neutral-600 dark:bg-neutral-700 rounded-lg h-full bg-gradient-to-r from-green-600/10 to-bg-white">
+                        <div class="card-body p-4">
+                            <div class="flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                    <p class="font-medium text-neutral-900 dark:text-white mb-1 text-sm">Total Codes</p>
+                                    <h6 class="mb-0 dark:text-white text-base">@Model.Codes.Count</h6>
+                                </div>
+                                <div class="w-10 h-10 bg-green-600 rounded-full flex justify-center items-center">
+                                    <iconify-icon icon="solar:code-outline" class="text-white text-lg mb-0"></iconify-icon>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+@* 
+                    <div class="card shadow-none border border-gray-200 dark:border-neutral-600 dark:bg-neutral-700 rounded-lg h-full bg-gradient-to-r from-purple-600/10 to-bg-white">
+                        <div class="card-body p-4">
+                            <div class="flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                    <p class="font-medium text-neutral-900 dark:text-white mb-1 text-sm">Created</p>
+                                    <h6 class="mb-0 dark:text-white text-base">@Model.CodeType.CreatedAt.ToString("MMM dd, yyyy")</h6>
+                                </div>
+                                <div class="w-10 h-10 bg-purple-600 rounded-full flex justify-center items-center">
+                                    <iconify-icon icon="solar:calendar-outline" class="text-white text-lg mb-0"></iconify-icon>
+                                </div>
+                            </div>
+                        </div>
+                    </div> *@
+
+                    <div class="card shadow-none border border-gray-200 dark:border-neutral-600 dark:bg-neutral-700 rounded-lg h-full bg-gradient-to-r from-yellow-600/10 to-bg-white">
+                        <div class="card-body p-4">
+                            <div class="flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                    <p class="font-medium text-neutral-900 dark:text-white mb-1 text-sm">Last Sequence</p>
+                                    <h6 class="mb-0 dark:text-white text-base">@(Model.Codes.Any() ? Model.Codes.Max(c => c.Sequence).ToString() : "0")</h6>
+                                </div>
+                                <div class="w-10 h-10 bg-yellow-600 rounded-full flex justify-center items-center">
+                                    <iconify-icon icon="solar:sort-vertical-outline" class="text-white text-lg mb-0"></iconify-icon>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Codes Management -->
+    <div class="col-span-12">
+        <div class="card border-0">
+            <div class="card-header flex items-center justify-between">
+                <div>
+                    <h6 class="card-title mb-0 text-lg">Codes</h6>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Manage individual codes for this code type</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    @if (hasEditAccess)
+                    {
+                        <button onclick="openQuickAddModal()" class="btn btn-primary text-sm btn-sm px-3 py-3 rounded-lg flex items-center gap-2">
+                            <iconify-icon icon="ic:baseline-plus" class="icon text-xl line-height-1"></iconify-icon>
+                            Add Code
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <div class="card-body">
+                @if (Model.Codes.Any())
+                {
+                    <!-- Sortable Codes List -->
+                    <div id="sortable-codes" class="space-y-3">
+                        @foreach (var code in Model.Codes)
+                        {
+                            <div class="code-item flex items-center justify-between p-4 bg-gray-50 dark:bg-neutral-800 rounded-lg group hover:bg-gray-100 dark:hover:bg-neutral-700 transition-colors border border-gray-200 dark:border-neutral-600"
+                                 data-code-id="@code.Id"
+                                 data-sequence="@code.Sequence"
+                                 draggable="@(hasEditAccess ? "true" : "false")">
+
+                                <div class="flex items-center gap-4 flex-1">
+                                    <!-- Sequence Badge -->
+                                    <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full flex items-center justify-center text-sm font-bold">
+                                        @code.Sequence
+                                    </div>
+
+                                    <!-- Code Details -->
+                                    <div class="flex-1">
+                                        <div class="font-semibold text-gray-900 dark:text-white text-lg">@code.Name</div>
+                                        @if (!string.IsNullOrEmpty(code.Detail))
+                                        {
+                                            <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">@code.Detail</div>
+                                        }
+                                        <div class="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                                            Code Type: @code.GeneralCodeTypeName
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Actions -->
+                                <div class="flex items-center gap-2 ml-4">
+                                    @if (hasEditAccess)
+                                    {
+                                        <a href="javascript:void(0)" onclick="editCode('@code.Id', '@Html.Raw(Html.Encode(code.Name))', '@Html.Raw(Html.Encode(code.Detail ?? ""))', @code.Sequence)" class="w-8 h-8 bg-success-100 dark:bg-success-600/25 text-success-600 dark:text-success-400 rounded-full inline-flex items-center justify-center mr-1" title="Edit Code">
+                                            <iconify-icon icon="lucide:edit"></iconify-icon>
+                                        </a>
+                                        <a href="javascript:void(0)" onclick="deleteCode('@code.Id', '@Html.Raw(Html.Encode(code.Name))')" class="delete-user w-8 h-8 bg-danger-100 dark:bg-danger-600/25 text-danger-600 dark:text-danger-400 rounded-full inline-flex items-center justify-center" title="Delete Code">
+                                            <iconify-icon icon="mingcute:delete-2-line"></iconify-icon>
+                                        </a>
+                                        <a href="javascript:void(0)" class="w-8 h-8 bg-gray-100 text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:bg-neutral-700 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-neutral-600 cursor-move rounded-lg flex items-center justify-center transition-all duration-200 border border-gray-200 dark:border-neutral-600" title="Drag to reorder">
+                                            <iconify-icon icon="solar:hamburger-menu-outline"></iconify-icon>
+                                        </a>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    @if (hasEditAccess)
+                    {
+                        <div class="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                            <div class="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                                <iconify-icon icon="solar:info-circle-outline" class="text-lg"></iconify-icon>
+                                <span class="text-sm font-medium">Drag and drop codes to reorder them. Changes are saved automatically.</span>
+                            </div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <!-- Empty State -->
+                    <div class="text-center py-12">
+                        <div class="text-gray-400 dark:text-gray-500">
+                            <iconify-icon icon="solar:code-outline" class="text-6xl mb-4"></iconify-icon>
+                            <h3 class="text-lg font-medium mb-2">No Codes Yet</h3>
+                            <p class="text-sm mb-4">This code type doesn't have any codes defined yet.</p>
+                            @if (hasEditAccess)
+                            {
+                                <button onclick="openQuickAddModal()" class="btn btn-primary px-6 py-2 rounded-lg">
+                                    <iconify-icon icon="ic:baseline-plus" class="mr-2"></iconify-icon>
+                                    Add First Code
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (hasEditAccess)
+{
+    <!-- Quick Add Code Modal -->
+    <div id="quick-add-modal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onclick="closeQuickAddModal()"></div>
+
+            <div class="inline-block w-full max-w-md p-6 my-8 text-left align-middle transition-all transform bg-white dark:bg-neutral-800 shadow-xl rounded-2xl">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">Add New Code</h3>
+                    <button type="button" onclick="closeQuickAddModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        <iconify-icon icon="solar:close-circle-outline" class="text-xl"></iconify-icon>
+                    </button>
+                </div>
+
+                <form id="quick-add-form">
+                    <div class="mb-4">
+                        <label class="form-label">Code Name <span class="text-red-500">*</span></label>
+                        <input type="text" id="quick-code-name" class="form-control" placeholder="Enter code name" required>
+                        <div class="text-red-500 text-sm mt-1 hidden" id="quick-name-error"></div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label">Detail/Description</label>
+                        <textarea id="quick-code-detail" class="form-control" rows="3" placeholder="Enter code description (optional)"></textarea>
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="form-label">Sequence</label>
+                        <input type="number" id="quick-code-sequence" class="form-control" min="1" value="@(Model.Codes.Any() ? (Model.Codes.Max(c => c.Sequence) + 1) : 1)">
+                        <small class="text-gray-500">Order position for this code</small>
+                    </div>
+
+                    <div class="flex justify-end gap-3">
+                        <button type="button" onclick="closeQuickAddModal()" class="btn bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg">
+                            Cancel
+                        </button>
+                        <button type="submit" class="btn btn-primary px-4 py-2 rounded-lg">
+                            Add Code
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Code Modal -->
+    <div id="edit-code-modal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onclick="closeEditModal()"></div>
+
+            <div class="inline-block w-full max-w-md p-6 my-8 text-left align-middle transition-all transform bg-white dark:bg-neutral-800 shadow-xl rounded-2xl">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">Edit Code</h3>
+                    <button type="button" onclick="closeEditModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        <iconify-icon icon="solar:close-circle-outline" class="text-xl"></iconify-icon>
+                    </button>
+                </div>
+
+                <form id="edit-code-form">
+                    <input type="hidden" id="edit-code-id" />
+
+                    <div class="mb-4">
+                        <label class="form-label">Code Name <span class="text-red-500">*</span></label>
+                        <input type="text" id="edit-code-name" class="form-control" placeholder="Enter code name" required>
+                        <div class="text-red-500 text-sm mt-1 hidden" id="edit-name-error"></div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label">Detail/Description</label>
+                        <textarea id="edit-code-detail" class="form-control" rows="3" placeholder="Enter code description (optional)"></textarea>
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="form-label">Sequence</label>
+                        <input type="number" id="edit-code-sequence" class="form-control" min="1">
+                        <small class="text-gray-500">Order position for this code</small>
+                    </div>
+
+                    <div class="flex justify-end gap-3">
+                        <button type="button" onclick="closeEditModal()" class="btn bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg">
+                            Cancel
+                        </button>
+                        <button type="submit" class="btn btn-primary px-4 py-2 rounded-lg">
+                            Update Code
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+<input type="hidden" id="currentWarehouseId" value="@Model.CodeType.WarehouseId" />
+
+@section Scripts {
+    <script src="~/js/pages/general-codes/detail-with-codes.js" asp-append-version="true"></script>
+}

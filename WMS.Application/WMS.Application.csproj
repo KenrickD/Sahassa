@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AutoMapper" Version="14.0.0" />
+    <PackageReference Include="AWSSDK.Core" Version="4.0.0.3" />
+    <PackageReference Include="AWSSDK.S3" Version="4.0.0.3" />
+    <PackageReference Include="BarcodeLib" Version="3.1.5" />
+    <PackageReference Include="EPPlus" Version="8.0.5" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.16" />
+    <PackageReference Include="Microsoft.AspNetCore.Authorization" Version="8.0.16" />
+    <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity" Version="2.3.1" />
+    <PackageReference Include="Microsoft.Exchange.WebServices" Version="2.2.0" />
+    <PackageReference Include="Microsoft.Identity.Client" Version="4.72.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="PDFsharp" Version="6.1.1" />
+    <PackageReference Include="PDFsharp-MigraDoc" Version="6.1.1" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.10" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.9.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WMS.Domain\WMS.Domain.csproj" />
+    <ProjectReference Include="..\WMS.Infrastructure\WMS.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

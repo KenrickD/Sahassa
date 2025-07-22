@@ -1,0 +1,50 @@
+﻿@model WMS.Domain.DTOs.GIV_FinishedGood.FinishedGoodDetailsDto
+@{
+    ViewData["Title"] = "Finished Good";
+}
+
+@Html.AntiForgeryToken()
+
+<div class="card p-3 mb-4">
+    <div class="flex justify-between items-center">
+        <div>
+    <h4>SKU: @Model.SKU</h4>
+    <p><strong>Description:</strong> @Model.Description</p>
+    <p><strong>Total Balance Quantity:</strong> @Model.TotalBalanceQty</p>
+    <p><strong>Total Balance Pallet:</strong> @Model.TotalBalancePallet</p>
+    </div>
+            <div class="flex gap-2">
+                <a href="@Url.Action("Releases", new { id = Model.Id })" class="btn btn-info">
+                    <iconify-icon icon="lucide:clock"></iconify-icon>
+                    View Releases
+                </a>
+            </div>
+        </div>
+</div>
+
+<h3>Receives</h3>
+
+<table class="table table-bordered table-striped w-100" id="receives-table" data-finished-good-id="@Model.Id">
+    <thead>
+        <tr>
+            <th>Received Date</th>
+            <th>Pack Size</th>
+            <th>Quantity</th>
+            <th>No. of Pallets</th>
+            <th>Balance of Quantity</th>
+            <th>Balance of Pallets</th>
+            <th>Show Pallets</th>
+            <th>
+                <button id="toggle-group-btn" class="btn btn-info btn-sm w-100">
+                    Show Items (Grouped by BatchNo)
+                </button>
+            </th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+@section Scripts {
+    <script src="~/js/pages/finished-good/receives-table.js" asp-append-version="true"></script>
+}

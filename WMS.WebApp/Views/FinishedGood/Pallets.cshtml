@@ -1,0 +1,36 @@
+﻿@using WMS.Domain.DTOs.GIV_FG_ReceivePallet
+@using WMS.Domain.DTOs.GIV_FG_ReceivePalletItem
+@model Guid
+
+@{
+    ViewData["Title"] = "Receive Pallets";
+}
+
+@Html.AntiForgeryToken()
+
+<h2>Receive Pallets</h2>
+
+<table id="pallets-table" class="table table-bordered" data-receive-id="@Model">
+    <thead>
+        <tr>
+            <th>MHU</th>
+            <th>Pack Size</th>
+            <th>Quantity</th>
+            <th>Quantity Balance</th>
+            <th>Details (HU / Remarks / Prod Date)</th>
+            <th>Location</th>
+            <th>Photos</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        <!-- Populated via JavaScript -->
+    </tbody>
+</table>
+
+<!-- Modal container -->
+<div id="modal-container"></div>
+
+@section Scripts {
+    <script src="~/js/pages/finished-good/pallets-table.js" asp-append-version="true"></script>
+}

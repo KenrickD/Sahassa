@@ -1,0 +1,110 @@
+﻿@model WMS.Domain.DTOs.GIV_RawMaterial.RawMaterialDetailsDto
+
+@{
+    ViewData["Title"] = "Raw Material";
+}
+
+@Html.AntiForgeryToken()
+
+<div class="card p-3 mb-4">
+    <div class="flex justify-between items-center">
+        <div>
+            <h4>Material No: @Model.MaterialNo</h4>
+            <p><strong>Description:</strong> @Model.Description</p>
+            <p><strong>Total Balance Quantity:</strong> @Model.TotalBalanceQty</p>
+            <p><strong>Total Balance Pallet:</strong> @Model.TotalBalancePallet</p>
+        </div>
+        <div class="flex gap-2">
+            <a href="@Url.Action("Releases", new { id = Model.Id })" class="btn btn-info">
+                <iconify-icon icon="lucide:clock"></iconify-icon>
+                View Releases
+            </a>
+        </div>
+    </div>
+</div>
+
+<h3>Receives</h3>
+
+<!-- Toggle Button (no more form submission) -->
+
+<table id="receives-table" data-raw-material-id="@Model.Id">
+    <thead>
+        <tr>
+            <th>Received Date</th>
+            <th>Pack Size</th>
+            <th>Quantity</th>
+            <th>No. of Pallets</th>
+            <th>Balance of Quantity</th>
+            <th>Balance of Pallets</th>
+            <th>Container</th>
+            <th>Show Pallets</th>
+            <th>
+                <button id="toggle-group-btn" class="btn btn-info btn-sm w-100">
+                    Show Items (Grouped by BatchNo)
+                </button>
+            </th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        <!-- Populated via JS -->
+    </tbody>
+</table>
+
+<style>
+    .dark input[type="date"] {
+        background-color: #374151;
+        border-color: #4B5563;
+        color: white;
+    }
+
+        /* Fix for date inputs in dark mode */
+        .dark input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+        }
+
+    /* Style for dark mode DataTables */
+    .dark .dataTables_wrapper .dataTables_filter input,
+    .dark .dataTables_wrapper .dataTables_length select {
+        background-color: #374151;
+        border-color: #4B5563;
+        color: white;
+    }
+
+    /* Style for table in dark mode */
+    .dark .dataTable {
+        color: #E5E7EB;
+    }
+
+    /* Style for date cells in dark mode */
+    .dark .date-cell {
+        color: #E5E7EB;
+    }
+
+    /* Additional dark mode styles for buttons */
+    .dark .btn-primary {
+        background-color: #3B82F6;
+        border-color: #2563EB;
+    }
+
+    .dark .btn-secondary {
+        background-color: #4B5563;
+        border-color: #374151;
+    }
+
+    /* Make date range filter more visible in dark mode */
+    .dark .date-filter {
+        background-color: #1F2937 !important;
+        border: 1px solid #374151;
+    }
+
+    /* Fix for DataTables processing indicator in dark mode */
+    .dark .dataTables_processing {
+        background-color: rgba(31, 41, 55, 0.8);
+        color: white;
+    }
+</style>
+
+@section Scripts {
+    <script src="~/js/pages/raw-material/receives-table.js" asp-append-version="true"></script>
+}

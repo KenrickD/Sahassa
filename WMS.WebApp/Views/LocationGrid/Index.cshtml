@@ -1,0 +1,593 @@
+﻿@model WMS.WebApp.Models.LocationGrids.LocationGridViewModel
+
+@{
+    ViewData["Title"] = "Location Grid";
+    ViewData["subTitle"] = "Warehouse / Location Grid";
+}
+
+<div class="grid grid-cols-12 gap-6">
+    <div class="col-span-12">
+        <div class="card border-0">
+            <div class="card-header">
+                <div class="flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                        <h4 class="mb-2">Location Grid Dashboard</h4>
+                        <p class="text-neutral-400 mb-0">Real-time warehouse location status</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <!-- Zone Selector -->
+                        <div class="min-w-[200px]">
+                            <select id="zoneSelector" class="form-select form-select-sm bg-white dark:bg-neutral-700 border text-secondary-light">
+                                <option value="">Select Zone</option>
+                                @foreach (var zone in Model.Zones)
+                                {
+                                    <option value="@zone.Id" selected="@(zone.Id == Model.SelectedZoneId)">
+                                        @zone.DisplayText
+                                    </option>
+                                }
+                            </select>
+                        </div>
+
+                        <!-- Search -->
+                        <div class="relative">
+                            <input type="text" id="locationSearch"
+                                   class="form-control form-control-sm pl-10 pr-4 py-2 w-64"
+                                   placeholder="Search location code...">
+                        </div>
+
+                        <!-- Print Layout Button -->
+                        <button type="button" id="printLayoutBtn"
+                                class="btn btn-outline-secondary btn-sm px-3 py-2 flex items-center gap-2"
+                                title="Print Layout">
+                            <iconify-icon icon="heroicons:printer" class="text-lg"></iconify-icon>
+                            Print Layout
+                        </button>
+
+                        <!-- Legend -->
+                        <div class="flex items-center gap-6 text-sm">
+                            <div class="flex items-center gap-6 text-sm">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-4 h-4 rounded legend-available"></div>
+                                    <span>Available</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <div class="w-4 h-4 rounded legend-partial"></div>
+                                    <span>Partial</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <div class="w-4 h-4 rounded legend-occupied"></div>
+                                    <span>Occupied</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-body p-4">
+                <!-- Grid Controls -->
+                <div class="flex items-center justify-between mb-4" id="filterAndZoomRowDiv">
+                    <div class="flex items-center gap-4">
+                        <!-- Filter Controls -->
+                        <div class="flex items-center gap-2">
+                            <label class="text-sm font-medium">Filter:</label>
+                            <select id="statusFilter" class="form-select form-select-sm w-auto">
+                                <option value="all">All Status</option>
+                                <option value="available">Available Only</option>
+                                <option value="partial">Partial Only</option>
+                                <option value="occupied">Occupied Only</option>
+                            </select>
+                        </div>
+
+                        <!-- Row Filter -->
+                        <div class="flex items-center gap-2">
+                            <label class="text-sm font-medium">Row:</label>
+                            <select id="rowFilter" class="form-select form-select-sm w-auto">
+                                <option value="all">All Rows</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <!-- Zoom Controls -->
+                        <button id="zoomOut" class="btn btn-sm btn-outline-secondary" title="Zoom Out">
+                            <iconify-icon icon="heroicons:minus"></iconify-icon>
+                        </button>
+                        <button id="zoomReset" class="btn btn-sm btn-outline-secondary" title="Reset Zoom">
+                            <iconify-icon icon="heroicons:home"></iconify-icon>
+                        </button>
+                        <button id="zoomIn" class="btn btn-sm btn-outline-secondary" title="Zoom In">
+                            <iconify-icon icon="heroicons:plus"></iconify-icon>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Loading State -->
+                <div id="loadingState" class="flex items-center justify-center py-20">
+                    <div class="text-center">
+                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-4"></div>
+                        <p class="text-gray-500">Loading location grid...</p>
+                    </div>
+                </div>
+
+                <!-- Grid Container -->
+                <div id="gridContainer" class="hidden">
+                    <div class="grid-scroll-container border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800"
+                         style="height: 70vh; overflow: auto;">
+                        <div id="locationGrid" class="location-grid transition-transform duration-200"></div>
+                        <div id="queueLocationGrid" class="queueLocationGrid transition-transform duration-200"></div>
+                    </div>
+                </div>
+
+                <!-- No Data State -->
+                <div id="noDataState" class="hidden text-center py-20">
+                    <iconify-icon icon="heroicons:building-storefront" class="text-6xl text-gray-400 mb-4"></iconify-icon>
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No Locations Found</h3>
+                    <p class="text-gray-500">No locations available for the selected zone.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Location Details Modal -->
+<div id="locationModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-lg max-w-7xl w-full max-h-[90vh] overflow-hidden">
+            <!-- Modal Header -->
+            <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 border-b border-gray-200 dark:border-gray-600">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-xl font-semibold text-gray-900 dark:text-white" id="modalLocationCode">
+                            Location Details
+                        </h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-400" id="modalLocationName">
+                            Loading...
+                        </p>
+                    </div>
+                    <button type="button" id="closeModal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        <iconify-icon icon="heroicons:x-mark" class="text-2xl"></iconify-icon>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Modal Content -->
+            <div class="flex h-[calc(90vh-120px)]">
+                <!-- Left Side - Location Information -->
+                <div class="w-1/2 p-6 border-r border-gray-200 dark:border-gray-600 overflow-y-auto">
+                    <div id="modalContent">
+                        <!-- Content will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Right Side - Item Management -->
+                <div class="w-1/2 flex flex-col">
+                    <!-- Link Items Section -->
+                    <div class="border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700">
+                        <div class="p-4">
+                            <div class="flex items-center justify-between mb-4">
+                                <h4 class="text-lg font-semibold text-gray-900 dark:text-white">Link Items to Location</h4>
+                                <div class="text-sm text-gray-600 dark:text-gray-400">
+                                    Capacity: <span id="modalCapacityInfo">0/0</span>
+                                </div>
+                            </div>
+
+                            <!-- Filters -->
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                                <div>
+                                    <input type="text"
+                                           id="linkableItemsSearch"
+                                           placeholder="Search items..."
+                                           class="form-control w-full text-sm">
+                                </div>
+                                <div>
+                                    <select id="linkableItemsClientFilter" class="form-select w-full text-sm">
+                                        <option value="">All Clients</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <select id="linkableItemsTypeFilter" class="form-select w-full text-sm">
+                                        <option value="">All Types</option>
+                                        <option value="1">Inventory</option>
+                                        <option value="2">GIV FG Pallet</option>
+                                        <option value="3">GIV RM Pallet</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-2">
+                                    <button type="button" id="selectAllLinkableItems"
+                                            class="btn btn-primary border border-primary-600 text-base text-xs px-3 py-1">
+                                        <iconify-icon icon="heroicons:clipboard-document-check" class="mr-1"></iconify-icon>
+                                        Select All
+                                    </button>
+                                    <button type="button" id="deselectAllLinkableItems"
+                                            class="border border-danger-600 bg-hover-danger-200 text-danger-600 text-base text-xs px-3 py-1">
+                                        <iconify-icon icon="heroicons:square-2-stack" class="mr-1"></iconify-icon>
+                                        Deselect All
+                                    </button>
+                                </div>
+                                <button type="button" id="linkSelectedItems"
+                                        class="btn btn-primary border border-primary-600 text-base text-sm px-4 py-2" disabled>
+                                    <iconify-icon icon="heroicons:link" class="mr-2"></iconify-icon>
+                                    Link Selected Items (<span id="selectedItemCount">0</span>)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Available Items Table -->
+                    <div class="flex-1 overflow-hidden">
+                        <div style="height: 300px;" class="overflow-y-auto">
+                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
+                                <thead class="bg-gray-50 dark:bg-gray-700 sticky top-0 z-10">
+                                    <tr>
+                                        <th class="w-8 px-3 py-2 text-left">
+                                            <input type="checkbox" id="selectAllLinkableItemsCheckbox"
+                                                   class="form-checkbox h-4 w-4 text-blue-600">
+                                        </th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                                            Type
+                                        </th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                                            Name
+                                        </th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                                            SKU/Code
+                                        </th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                                            Client
+                                        </th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                                            Received
+                                        </th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                                            Location
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody id="linkableItemsTableBody" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-600">
+                                    <tr>
+                                        <td colspan="6" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                                            <iconify-icon icon="heroicons:cube-transparent" class="text-4xl mb-2"></iconify-icon>
+                                            <div>Loading available items...</div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Current Items Section -->
+                    @* <div class="border-t border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800"> *@
+                    @*     <div class="p-4"> *@
+                    @*         <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-3"> *@
+                    @*             Current Items in Location (<span id="currentItemsCount">0</span>) *@
+                    @*         </h4> *@
+                    @*         <div class="max-h-48 overflow-y-auto" id="currentItemsContainer"> *@
+                    @*             <!-- Current items will be populated by JavaScript --> *@
+                    @*         </div> *@
+                    @*     </div> *@
+                    @* </div> *@
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Print Options Modal -->
+<div id="printOptionsModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full">
+            <!-- Modal Header -->
+            <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 border-b border-gray-200 dark:border-gray-600">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                        <iconify-icon icon="heroicons:printer" class="mr-2"></iconify-icon>
+                        Print Layout Options
+                    </h3>
+                    <button type="button" id="closePrintModal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        <iconify-icon icon="heroicons:x-mark" class="text-xl"></iconify-icon>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Modal Content -->
+            <div class="p-6">
+                <div class="mb-4">
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                        Zone: <span id="printZoneName" class="font-medium text-gray-900 dark:text-white"></span>
+                    </p>
+
+                    <div class="space-y-3">
+                        <label class="flex items-center">
+                            <input type="radio" name="printOption" value="filtered" checked
+                                   class="form-radio text-blue-600 mr-3">
+                            <div>
+                                <div class="font-medium text-gray-900 dark:text-white">Print Current View</div>
+                                <div class="text-sm text-gray-500">Only locations matching current filters</div>
+                            </div>
+                        </label>
+
+                        <label class="flex items-center">
+                            <input type="radio" name="printOption" value="all"
+                                   class="form-radio text-blue-600 mr-3">
+                            <div>
+                                <div class="font-medium text-gray-900 dark:text-white">Print All Locations</div>
+                                <div class="text-sm text-gray-500">All locations in the selected zone</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Current Filters Display -->
+                <div id="currentFiltersDisplay" class="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <div class="text-sm font-medium text-gray-900 dark:text-white mb-2">Current Filters:</div>
+                    <div class="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                        <div>Status: <span id="filterStatusDisplay">All Status</span></div>
+                        <div>Row: <span id="filterRowDisplay">All Rows</span></div>
+                        <div>Search: <span id="filterSearchDisplay">None</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 border-t border-gray-200 dark:border-gray-600">
+                <div class="flex items-center justify-end space-x-3">
+                    <button type="button" id="cancelPrintBtn"
+                            class="btn btn-outline-secondary px-4 py-2">
+                        Cancel
+                    </button>
+                    <button type="button" id="generatePrintBtn"
+                            class="btn btn-primary px-4 py-2 flex items-center gap-2">
+                        <iconify-icon icon="heroicons:document-arrow-down"></iconify-icon>
+                        Generate PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Unlimited Location Modal -->
+<div id="unlimitedLocationModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-lg max-w-7xl w-full max-h-[90vh] overflow-hidden">
+            <!-- Modal Header -->
+            <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 border-b border-gray-200 dark:border-gray-600">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-xl font-semibold text-gray-900 dark:text-white" id="modalUnlimitedLocationCode">
+                            Location Details
+                        </h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-400" id="modalUnlimitedLocationName">
+                            <!-- Location name will be populated here -->
+                        </p>
+                    </div>
+                    <button type="button" id="closeUnlimitedLocationModal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        <iconify-icon icon="heroicons:x-mark" class="text-2xl"></iconify-icon>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Modal Content -->
+            <div class="flex h-[calc(90vh-120px)]">
+                <!-- Left Side - Location Information and Current Items -->
+                <div class="w-1/2 p-6 border-r border-gray-200 dark:border-gray-600 overflow-y-auto flex flex-col">
+                    <!-- Location Information Section (20% height) -->
+                    <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-4" style="flex: 0 0 auto; max-height: 200px;">
+                        <h4 class="text-md font-semibold text-gray-900 dark:text-white mb-3">Location Information</h4>
+
+                        <div class="space-y-3">
+                            <div class="flex justify-between">
+                                <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Code:</span>
+                                <span id="unlimitedLocationCode" class="text-sm font-medium text-gray-900 dark:text-white"></span>
+                            </div>
+
+                            <div class="flex justify-between">
+                                <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Name:</span>
+                                <span id="unlimitedLocationName" class="text-sm font-medium text-gray-900 dark:text-white"></span>
+                            </div>
+
+                            <div class="flex justify-between">
+                                <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Zone:</span>
+                                <span id="unlimitedLocationZone" class="text-sm font-medium text-gray-900 dark:text-white"></span>
+                            </div>
+
+                            <div class="flex justify-between">
+                                <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Status:</span>
+                                <div id="unlimitedLocationStatus" class="text-sm">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/25 dark:text-green-400"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Current Items Section (80% height) -->
+                    <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg flex flex-col" style="flex: 1; min-height: 400px;">
+                        <!-- Header with search and pagination controls -->
+                        <div class="p-4 border-b border-gray-200 dark:border-gray-600">
+                            <div class="flex items-center justify-between mb-3">
+                                <h4 class="text-md font-semibold text-gray-900 dark:text-white">
+                                    Current Items (<span id="unlimitedTotalItemsCount">0</span>)
+                                </h4>
+                                <div class="flex items-center gap-2">
+                                    <select id="unlimitedPageSize" class="form-select form-select-sm w-auto">
+                                        <option value="10">10</option>
+                                        <option value="25">25</option>
+                                        <option value="50">50</option>
+                                    </select>
+                                    <span class="text-sm text-gray-500">per page</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <input type="text" id="unlimitedCurrentItemsSearch"
+                                       class="form-control form-control-sm flex-1"
+                                       placeholder="Search items...">
+                            </div>
+                        </div>
+
+                        <!-- Items Table -->
+                        <div class="flex-1 overflow-auto">
+                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
+                                <thead class="bg-gray-50 dark:bg-gray-700 sticky top-0">
+                                    <tr>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Type</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Name</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">MHU</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Client</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Qty</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Received</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="unlimitedCurrentItemsTableBody" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-600">
+                                    <!-- Content populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Pagination -->
+                        <div class="px-4 py-3 border-t border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700">
+                            <div class="flex items-center justify-between">
+                                <div class="text-sm text-gray-700 dark:text-gray-300">
+                                    Showing <span id="unlimitedShowingFrom">0</span> to <span id="unlimitedShowingTo">0</span> of <span id="unlimitedShowingTotal">0</span> items
+                                </div>
+                                <div class="flex items-center space-x-2" id="unlimitedPaginationControls">
+                                    <!-- Pagination buttons populated by JavaScript -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Side - Item Management -->
+                <div class="w-1/2 flex flex-col">
+                    <!-- Link Items Section -->
+                    <div class="border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700">
+                        <div class="p-4">
+                            <div class="flex items-center justify-between mb-4">
+                                <h4 class="text-lg font-semibold text-gray-900 dark:text-white">Link Items to Location</h4>
+                                <!-- No capacity info for unlimited locations -->
+                            </div>
+
+                            <!-- Filters -->
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                                <div>
+                                    <input type="text"
+                                           id="unlimitedItemSearch"
+                                           placeholder="Search items..."
+                                           class="form-control w-full text-sm">
+                                </div>
+                                <div>
+                                    <select id="unlimitedItemsClientFilter" class="form-select w-full text-sm">
+                                        <option value="">All Clients</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <select id="unlimitedItemsTypeFilter" class="form-select w-full text-sm">
+                                        <option value="">All Types</option>
+                                        <option value="1">Inventory</option>
+                                        <option value="2">GIV FG Pallet</option>
+                                        <option value="3">GIV RM Pallet</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-2">
+                                    <button type="button" id="selectAllUnlimitedItems"
+                                            class="btn btn-primary border border-primary-600 text-base text-xs px-3 py-1">
+                                        <iconify-icon icon="heroicons:clipboard-document-check" class="mr-1"></iconify-icon>
+                                        Select All
+                                    </button>
+                                    <button type="button" id="deselectAllUnlimitedItems"
+                                            class="border border-danger-600 bg-hover-danger-200 text-danger-600 text-base text-xs px-3 py-1">
+                                        <iconify-icon icon="heroicons:square-2-stack" class="mr-1"></iconify-icon>
+                                        Deselect All
+                                    </button>
+                                </div>
+                                <button type="button" id="unlimitedLinkSelectedBtn"
+                                        class="btn btn-primary border border-primary-600 text-base text-sm px-4 py-2" disabled>
+                                    <iconify-icon icon="heroicons:link" class="mr-2"></iconify-icon>
+                                    Link Selected (<span id="unlimitedSelectedCount">0</span>)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Available Items Table -->
+                    <div class="flex-1 overflow-hidden">
+                        <div style="height: 500px;" class="overflow-y-auto">
+                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
+                                <thead class="bg-gray-50 dark:bg-gray-700 sticky top-0 z-10">
+                                    <tr>
+                                        <th class="w-8 px-3 py-2 text-left">
+                                            <input type="checkbox" id="selectAllUnlimitedItemsCheckbox"
+                                                   class="form-checkbox h-4 w-4 text-blue-600">
+                                        </th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                                            Type
+                                        </th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                                            Name
+                                        </th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                                            SKU/Code
+                                        </th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                                            Client
+                                        </th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                                            Received
+                                        </th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                                            Location
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody id="unlimitedItemsTableBody" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-600">
+                                    <tr>
+                                        <td colspan="6" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                                            <iconify-icon icon="heroicons:cube-transparent" class="text-4xl mb-2"></iconify-icon>
+                                            <div>Loading available items...</div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Current Items Section -->
+                    @* <div class="border-t border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800"> *@
+                    @*     <div class="p-4"> *@
+                    @*         <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-3"> *@
+                    @*             Current Items in Location (<span id="unlimitedCurrentItemsCount">0</span>) *@
+                    @*         </h4> *@
+                    @*         <div class="max-h-48 overflow-y-auto" id="unlimitedCurrentItemsContainer"> *@
+                    @*             <!-- Current items will be populated by JavaScript --> *@
+                    @*         </div> *@
+                    @*     </div> *@
+                    @* </div> *@
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tooltip -->
+<div id="locationTooltip" class="fixed z-50 hidden bg-gray-900 text-white text-sm rounded-lg shadow-lg p-3 pointer-events-none">
+    <div id="tooltipContent"></div>
+    <div class="tooltip-arrow"></div>
+</div>
+
+<input type="hidden" id="currentWarehouseId" value="@Model.WarehouseId" />
+<input type="hidden" id="currentZoneId" value="@Model.SelectedZoneId" />
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/pages/location-grids/grid.css" asp-append-version="true" />
+}
+@section Scripts {
+    <script src="~/js/pages/location-grids/grid.js" asp-append-version="true"></script>
+}

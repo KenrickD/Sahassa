@@ -1,0 +1,606 @@
+﻿@model WMS.WebApp.Models.Users.ViewProfileModel
+
+@{
+    ViewData["Title"] = "View Profile";
+    ViewData["subTitle"] = "Users / Profile";
+
+    var isOwnProfile = Model.IsOwnProfile;
+    var hasEditAccess = Model.HasEditAccess;
+    var isReadOnly = !isOwnProfile && !hasEditAccess;
+}
+
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6" id="user-profile-container">
+    <div class="col-span-12 lg:col-span-4">
+        <div class="user-grid-card relative border border-neutral-200 dark:border-neutral-600 rounded-2xl overflow-hidden bg-white dark:bg-neutral-700 h-full">
+            <div class="pb-6 ms-6 mb-6 me-6">
+                <div class="text-center border-b border-neutral-200 dark:border-neutral-600">
+                    <img src="@Model.User.ProfileImageUrl" alt="" class="border br-white border-width-2-px w-200-px h-[200px] rounded-full object-fit-cover mx-auto">
+                    <h6 class="mb-0 mt-4">@Model.User.FullName</h6>
+                    <span class="text-secondary-light mb-4">@Model.User.Email</span>
+                </div>
+                <div class="mt-6">
+                    <h6 class="text-xl mb-4">Personal Info</h6>
+                    <ul>
+                        <li class="flex items-center gap-1 mb-3">
+                            <span class="w-[30%] text-base font-semibold text-neutral-600 dark:text-neutral-200">Username</span>
+                            <span class="w-[70%] text-secondary-light font-medium">: @Model.User.Username</span>
+                        </li>
+                        <li class="flex items-center gap-1 mb-3">
+                            <span class="w-[30%] text-base font-semibold text-neutral-600 dark:text-neutral-200">Email</span>
+                            <span class="w-[70%] text-secondary-light font-medium">: @Model.User.Email</span>
+                        </li>
+                        <li class="flex items-center gap-1 mb-3">
+                            <span class="w-[30%] text-base font-semibold text-neutral-600 dark:text-neutral-200">First Name</span>
+                            <span class="w-[70%] text-secondary-light font-medium">: @Model.User.FirstName</span>
+                        </li>
+                        <li class="flex items-center gap-1 mb-3">
+                            <span class="w-[30%] text-base font-semibold text-neutral-600 dark:text-neutral-200">Last Name</span>
+                            <span class="w-[70%] text-secondary-light font-medium">: @Model.User.LastName</span>
+                        </li>
+                        <li class="flex items-center gap-1 mb-3">
+                            <span class="w-[30%] text-base font-semibold text-neutral-600 dark:text-neutral-200">Phone</span>
+                            <span class="w-[70%] text-secondary-light font-medium">: @Model.User.PhoneNumber</span>
+                        </li>
+                        <li class="flex items-center gap-1 mb-3">
+                            <span class="w-[30%] text-base font-semibold text-neutral-600 dark:text-neutral-200">Warehouse</span>
+                            <span class="w-[70%] text-secondary-light font-medium">: @Model.User.WarehouseName</span>
+                        </li>
+                        <li class="flex items-center gap-1 mb-3">
+                            <span class="w-[30%] text-base font-semibold text-neutral-600 dark:text-neutral-200">Client</span>
+                            <span class="w-[70%] text-secondary-light font-medium">: @(Model.User.ClientName ?? "None")</span>
+                        </li>
+                        <li class="flex items-center gap-1">
+                            <span class="w-[30%] text-base font-semibold text-neutral-600 dark:text-neutral-200">Status</span>
+                            <span class="w-[70%]">
+                                @if (Model.User.IsActive)
+                                {
+                                    <span class="bg-success-100 dark:bg-success-600/25 text-success-600 dark:text-success-400 px-3 py-1 rounded-full font-medium text-sm">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="bg-danger-100 dark:bg-danger-600/25 text-danger-600 dark:text-danger-400 px-3 py-1 rounded-full font-medium text-sm">Inactive</span>
+                                }
+                            </span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-span-12 lg:col-span-8">
+        <div class="card h-full border-0">
+            <div class="card-body p-6">
+
+                <ul class="tab-style-gradient flex flex-wrap text-sm font-medium text-center mb-5" id="default-tab" data-tabs-toggle="#default-tab-content" role="tablist">
+                    <li class="" role="presentation">
+                        <button class="py-2.5 px-4 border-t-2 font-semibold text-base inline-flex items-center gap-3 text-neutral-600" id="edit-profile-tab" data-tabs-target="#edit-profile" type="button" role="tab" aria-controls="edit-profile" aria-selected="false">
+                            <iconify-icon icon="solar:user-circle-outline"></iconify-icon>
+                            Edit Profile
+                        </button>
+                    </li>
+                    <li class="" role="presentation">
+                        <button class="py-2.5 px-4 border-t-2 font-semibold text-base inline-flex items-center gap-3 text-neutral-600 hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300" id="change-password-tab" data-tabs-target="#change-password" type="button" role="tab" aria-controls="change-password" aria-selected="false">
+                            <iconify-icon icon="solar:shield-keyhole-outline"></iconify-icon>
+                            Change Password
+                        </button>
+                    </li>
+                    <li class="" role="presentation">
+                        <button class="py-2.5 px-4 border-t-2 font-semibold text-base inline-flex items-center gap-3 text-neutral-600 hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300" id="user-role-tab" data-tabs-target="#user-role" type="button" role="tab" aria-controls="user-role" aria-selected="false">
+                            <iconify-icon icon="solar:shield-keyhole-outline"></iconify-icon>
+                            User Role
+                        </button>
+                    </li>
+                    <li class="" role="presentation">
+                        <button class="py-2.5 px-4 border-t-2 font-semibold text-base inline-flex items-center gap-3 text-neutral-600 hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300" id="user-permission-tab" data-tabs-target="#user-permission" type="button" role="tab" aria-controls="user-permission" aria-selected="false">
+                            <iconify-icon icon="solar:shield-keyhole-outline"></iconify-icon>
+                            User Permission
+                        </button>
+                    </li>
+                </ul>
+
+                <div id="default-tab-content">
+                    <div class="hidden" id="edit-profile" role="tabpanel" aria-labelledby="edit-profile-tab">
+                        <h6 class="text-base text-neutral-600 dark:text-neutral-200 mb-4">Profile Information</h6>
+
+                        <!-- Form starts here -->
+                        <form id="userProfileForm" asp-action="UpdateProfile" asp-controller="User" method="post" enctype="multipart/form-data">
+                            <input type="hidden" asp-for="User.Id" name="Id" />
+
+                            @if (isOwnProfile || hasEditAccess)
+                            {
+                                <!-- Upload Image Start - Only show if user has own profile or edit access -->
+                                <div class="mb-6 mt-4">
+                                    <div class="avatar-upload">
+                                        <div class="avatar-edit absolute bottom-0 end-0 me-6 mt-4 z-[1] cursor-pointer">
+                                            <input type='file' id="imageUpload" name="ProfileImage" accept=".png, .jpg, .jpeg" hidden>
+                                            <label for="imageUpload" class="w-8 h-8 flex justify-center items-center bg-primary-100 dark:bg-primary-600/25 text-primary-600 dark:text-primary-400 border border-primary-600 hover:bg-primary-100 text-lg rounded-full">
+                                                <iconify-icon icon="solar:camera-outline" class="icon"></iconify-icon>
+                                            </label>
+                                        </div>
+                                        <div class="avatar-preview">
+                                            <div id="imagePreview" style="background-image: url(@Model.User.ProfileImageUrl);">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Upload Image End -->
+                            }
+
+                            <div class="grid grid-cols-1 sm:grid-cols-12 gap-x-6">
+                                <div class="col-span-12 sm:col-span-6">
+                                    <div class="mb-5">
+                                        <label for="username" class="inline-block font-semibold text-neutral-600 dark:text-neutral-200 text-sm mb-2">Username</label>
+                                        <input type="text" class="form-control rounded-lg" id="username" asp-for="User.Username" name="Username" readonly disabled>
+                                    </div>
+                                </div>
+                                <div class="col-span-12 sm:col-span-6">
+                                    <div class="mb-5">
+                                        <label for="email" class="inline-block font-semibold text-neutral-600 dark:text-neutral-200 text-sm mb-2">Email</label>
+                                        <input type="email" class="form-control rounded-lg" id="email" asp-for="User.Email" name="Email" readonly disabled>
+                                    </div>
+                                </div>
+                                <div class="col-span-12 sm:col-span-6">
+                                    <div class="mb-5">
+                                        <label for="firstName" class="inline-block font-semibold text-neutral-600 dark:text-neutral-200 text-sm mb-2">First Name <span class="text-danger-600">*</span></label>
+                                        <input type="text"
+                                        class="form-control rounded-lg"
+                                        id="firstName"
+                                        asp-for="User.FirstName"
+                                        name="FirstName"
+                                        placeholder="Enter First Name"
+                                        readonly="@(isReadOnly ? "readonly" : null)"
+                                        disabled="@(isReadOnly ? "disabled" : null)" />
+                                        <span asp-validation-for="User.FirstName" class="text-danger-600 text-sm"></span>
+                                    </div>
+                                </div>
+                                <div class="col-span-12 sm:col-span-6">
+                                    <div class="mb-5">
+                                        <label for="lastName" class="inline-block font-semibold text-neutral-600 dark:text-neutral-200 text-sm mb-2">Last Name</label>
+                                        <input type="text" class="form-control rounded-lg" id="lastName" asp-for="User.LastName" name="LastName" placeholder="Enter Last Name"
+                                        readonly="@(isReadOnly ? "readonly" : null)"
+                                        disabled="@(isReadOnly ? "disabled" : null)" />
+                                        <span asp-validation-for="User.LastName" class="text-danger-600 text-sm"></span>
+                                    </div>
+                                </div>
+                                <div class="col-span-12 sm:col-span-6">
+                                    <div class="mb-5">
+                                        <label for="phoneNumber" class="inline-block font-semibold text-neutral-600 dark:text-neutral-200 text-sm mb-2">Phone Number</label>
+                                        <input type="text" class="form-control rounded-lg" id="phoneNumber" asp-for="User.PhoneNumber" name="PhoneNumber" placeholder="Enter Phone Number"
+                                        readonly="@(isReadOnly ? "readonly" : null)"
+                                        disabled="@(isReadOnly ? "disabled" : null)" />
+                                        <span asp-validation-for="User.PhoneNumber" class="text-danger-600 text-sm"></span>
+                                    </div>
+                                </div>
+
+                                @if (hasEditAccess && !isOwnProfile)
+                                {
+                                    <!-- Admin-only fields - only show if admin and not own profile -->
+                                    <div class="col-span-12 sm:col-span-6">
+                                        <div class="mb-5">
+                                            <label for="warehouseId" class="inline-block font-semibold text-neutral-600 dark:text-neutral-200 text-sm mb-2">Warehouse <span class="text-danger-600">*</span></label>
+                                            <select class="form-control rounded-lg form-select" id="warehouseId" asp-for="User.WarehouseId" name="WarehouseId" asp-items="Model.Warehouses">
+                                                <option value="">Select Warehouse</option>
+                                            </select>
+                                            <span asp-validation-for="User.WarehouseId" class="text-danger-600 text-sm"></span>
+                                        </div>
+                                    </div>
+                                    <div class="col-span-12 sm:col-span-6">
+                                        <div class="mb-5">
+                                            <label for="clientId" class="inline-block font-semibold text-neutral-600 dark:text-neutral-200 text-sm mb-2">Client</label>
+                                            <select class="form-control rounded-lg form-select" id="clientId" asp-for="User.ClientId" name="ClientId" asp-items="Model.Clients">
+                                                <option value="">None</option>
+                                            </select>
+                                            <span asp-validation-for="User.ClientId" class="text-danger-600 text-sm"></span>
+                                        </div>
+                                    </div>
+                                    <div class="col-span-12 sm:col-span-6">
+                                        <div class="mb-5">
+                                            <label class="inline-block font-semibold text-neutral-600 dark:text-neutral-200 text-sm mb-2">Status</label>
+                                            <div class="form-switch switch-primary py-3 px-4 border rounded-lg relative">
+                                                <div class="flex items-center gap-3 justify-between">
+                                                    <span class="form-check-label line-height-1 font-medium text-secondary-light">Active</span>
+                                                    <input class="form-check-input" type="checkbox" role="switch" asp-for="User.IsActive" name="IsActive">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <!-- Read-only warehouse and client info for normal users -->
+                                    <div class="col-span-12 sm:col-span-6">
+                                        <div class="mb-5">
+                                            <label class="inline-block font-semibold text-neutral-600 dark:text-neutral-200 text-sm mb-2">Warehouse</label>
+                                            <input type="text" class="form-control rounded-lg" value="@Model.User.WarehouseName" readonly disabled>
+                                            <input type="hidden" asp-for="User.WarehouseId" />
+                                        </div>
+                                    </div>
+                                    <div class="col-span-12 sm:col-span-6">
+                                        <div class="mb-5">
+                                            <label class="inline-block font-semibold text-neutral-600 dark:text-neutral-200 text-sm mb-2">Client</label>
+                                            <input type="text" class="form-control rounded-lg" value="@(Model.User.ClientName ?? "System User")" readonly disabled>
+                                            <input type="hidden" asp-for="User.ClientId" />
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+
+                            @if (isOwnProfile || hasEditAccess)
+                            {
+                                <!-- Only show buttons if user can edit -->
+                                <div class="flex items-center justify-center gap-3 mt-6">
+                                    @if (hasEditAccess)
+                                    {
+                                        <a asp-controller="User" asp-action="Index" class="border border-danger-600 bg-hover-danger-200 text-danger-600 text-base px-14 py-[11px] rounded-lg">
+                                            Cancel
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <a asp-controller="Home" asp-action="Index" class="border border-danger-600 bg-hover-danger-200 text-danger-600 text-base px-14 py-[11px] rounded-lg">
+                                            Cancel
+                                        </a>
+                                    }
+
+                                    <button type="submit" class="btn btn-primary border border-primary-600 text-base px-14 py-3 rounded-lg">
+                                        Save
+                                    </button>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="flex items-center justify-center gap-3 mt-6">
+                                    <a asp-controller="User" asp-action="Index" class="btn btn-primary border border-primary-600 text-base px-14 py-3 rounded-lg">
+                                        Back
+                                    </a>
+                                </div>
+                            }
+                        </form>
+                    </div>
+                    
+                    <!-- Change Password Tab Content -->
+                    <div class="hidden" id="change-password" role="tabpanel" aria-labelledby="change-password-tab">
+                        @if (isOwnProfile || hasEditAccess)
+                        {
+                            <!-- Only show password change if user can edit -->
+                            <form id="changePasswordForm" method="post" asp-controller="User" asp-action="ChangePassword">
+                                <input type="hidden" asp-for="ChangePasswordVM.UserId" name="UserId" />
+                                
+                                @if (hasEditAccess && !isOwnProfile)
+                                {
+                                    <!-- Admin doesn't need current password for other users -->
+                                    <div class="mb-5">
+                                        <label for="newPassword" class="inline-block font-semibold text-neutral-600 dark:text-neutral-200 text-sm mb-2">New Password <span class="text-danger-600">*</span></label>
+                                        <div class="relative">
+                                            <input type="password" asp-for="ChangePasswordVM.NewPassword" class="form-control rounded-lg" id="newPassword" name="NewPassword" placeholder="Enter New Password*" required>
+                                            <span class="toggle-password ri-eye-line cursor-pointer absolute end-0 top-1/2 -translate-y-1/2 me-4 text-secondary-light" data-toggle="#newPassword"></span>
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <!-- Current user needs current password -->
+                                    <div class="mb-5">
+                                        <label for="currentPassword" class="inline-block font-semibold text-neutral-600 dark:text-neutral-200 text-sm mb-2">Current Password <span class="text-danger-600">*</span></label>
+                                        <div class="relative">
+                                            <input type="password" asp-for="ChangePasswordVM.CurrentPassword" class="form-control rounded-lg" id="currentPassword" name="CurrentPassword" placeholder="Enter Current Password*" required>
+                                            <span class="toggle-password ri-eye-line cursor-pointer absolute end-0 top-1/2 -translate-y-1/2 me-4 text-secondary-light" data-toggle="#currentPassword"></span>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-5">
+                                        <label for="newPassword" class="inline-block font-semibold text-neutral-600 dark:text-neutral-200 text-sm mb-2">New Password <span class="text-danger-600">*</span></label>
+                                        <div class="relative">
+                                            <input type="password"
+                                                   asp-for="ChangePasswordVM.NewPassword"
+                                                   class="form-control rounded-lg"
+                                                   id="newPassword"
+                                                   name="NewPassword"
+                                                   placeholder="Enter New Password*"
+                                                   minlength="8"
+                                                   pattern=".{8,}"
+                                                   title="Password must be at least 8 characters long"
+                                                   required>
+                                            <span class="toggle-password ri-eye-line cursor-pointer absolute end-0 top-1/2 -translate-y-1/2 me-4 text-secondary-light" data-toggle="#newPassword"></span>
+                                        </div>
+                                        <div class="text-sm text-gray-500 mt-1">Password must be at least 8 characters long</div>
+                                    </div>
+                                }
+
+                                <div class="mb-5">
+                                    <label for="confirmPassword" class="inline-block font-semibold text-neutral-600 dark:text-neutral-200 text-sm mb-2">Confirm Password <span class="text-danger-600">*</span></label>
+                                    <div class="relative">
+                                        <input type="password"
+                                               asp-for="ChangePasswordVM.ConfirmPassword"
+                                               class="form-control rounded-lg"
+                                               id="confirmPassword"
+                                               name="ConfirmPassword"
+                                               placeholder="Confirm Password*"
+                                               minlength="8"
+                                               pattern=".{8,}"
+                                               title="Password must be at least 8 characters long"
+                                               required>
+                                        <span class="toggle-password ri-eye-line cursor-pointer absolute end-0 top-1/2 -translate-y-1/2 me-4 text-secondary-light" data-toggle="#confirmPassword"></span>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-center justify-center gap-3 mt-6">
+@*                                     <button type="button" class="border border-danger-600 bg-hover-danger-200 text-danger-600 text-base px-14 py-[11px] rounded-lg" onclick="resetPasswordForm()">
+                                        Cancel
+                                    </button> *@
+                                    <button type="submit" class="btn btn-primary border border-primary-600 text-base px-14 py-3 rounded-lg">
+                                        Change Password
+                                    </button>
+                                </div>
+                            </form>
+                        }
+                        else
+                        {
+                            <!-- Show message if user doesn't have permission -->
+                            <div class="alert alert-info">
+                                You do not have permission to change passwords. Only the user or an administrator can change passwords.
+                            </div>
+                        }
+                    
+                    </div>
+
+                    <!-- User Role Tab Content -->
+                    <div class="hidden" id="user-role" role="tabpanel" aria-labelledby="user-role-tab">
+                        @if (!hasEditAccess)
+                        {
+                            <!-- Show message if user doesn't have permission -->
+                            <div class="alert alert-info">
+                                You do not have permission to manage user roles. Only administrators can manage user roles.
+                            </div>
+                        }
+                        else
+                        {
+                            <!-- Role Management Section -->
+                            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 dark:bg-neutral-700 dark:border-neutral-600">
+                                <div class="flex items-center justify-between mb-6">
+                                    <div>
+                                        <h3 class="text-lg font-semibold text-gray-900">User Roles</h3>
+                                        <p class="text-sm text-gray-600 mt-1">Manage roles for this user by checking/unchecking boxes</p>
+                                    </div>
+                                    <div class="flex items-center space-x-2">
+                                        <button type="button"
+                                                id="saveUserRolesBtn"
+                                                class="btn btn-primary border border-primary-600 text-base px-14 py-3 rounded-lg flex items-center">
+                                            <iconify-icon icon="solar:diskette-outline"
+                                                          class="mr-2 text-lg"></iconify-icon>
+                                            <span>Save Changes</span>
+                                        </button>
+                                        <button type="button"
+                                                id="resetUserRolesBtn"
+                                                class="btn btn-primary border border-primary-600 text-base px-14 py-3 rounded-lg flex items-center">
+                                            <iconify-icon icon="solar:refresh-outline"
+                                                          class="mr-2 text-lg"></iconify-icon>
+                                            <span>Reset</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Filter Section -->
+                                <div class="mb-4 flex flex-wrap items-center gap-4">
+                                    <div class="flex-1 min-w-48">
+                                        <label for="roleSearchBox" class="block text-sm font-medium text-gray-700 mb-2">
+                                            Search Roles
+                                        </label>
+                                        <input type="text"
+                                               id="roleSearchBox"
+                                               class="form-control w-full max-w-xs"
+                                               placeholder="Search by name or description...">
+                                    </div>
+                                    <div class="flex items-center space-x-2">
+                                        <button type="button"
+                                                id="selectAllRolesBtn"
+                                                class="btn btn-primary border border-primary-600 text-base px-14 py-3 rounded-lg flex items-center">
+                                            <iconify-icon icon="solar:check-square-outline"
+                                                          class="mr-2 text-lg"></iconify-icon>
+                                            <span>Select All</span>
+                                        </button>
+
+                                        <button type="button" id="deselectAllRolesBtn" class="border border-danger-600 bg-hover-danger-200 text-danger-600 text-base px-14 py-[11px] rounded-lg">
+                                            <iconify-icon icon="solar:square-outline" class="mr-1"></iconify-icon>
+                                            Deselect All
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Scrollable Roles Table -->
+                                <div class="border rounded-lg overflow-hidden">
+                                    <div class="overflow-x-auto">
+                                        <div class="max-h-96 overflow-y-auto">
+                                            <!-- Fixed height with scroll -->
+                                            <table id="userRolesTable" class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
+                                                <thead class="bg-gray-50 dark:bg-neutral-800 sticky top-0 z-10">
+                                                    <!-- Sticky header -->
+                                                    <tr>
+                                                        <th scope="col" class="w-12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            <input type="checkbox" id="selectAllRolesCheckbox" class="form-checkbox h-4 w-4 text-blue-600 cursor-pointer">
+                                                        </th>
+                                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Role Name
+                                                        </th>
+                                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Description
+                                                        </th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="userRolesTableBody" class="bg-white dark:bg-neutral-700 divide-y divide-gray-200 dark:divide-gray-600">
+                                                    <!-- Table rows will be populated by JavaScript -->
+                                                    <tr>
+                                                        <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                                                            <iconify-icon icon="solar:refresh-outline" class="animate-spin text-2xl mb-2"></iconify-icon>
+                                                            <div>Loading roles...</div>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Summary Section -->
+                                <div class="mt-6 p-4 bg-gray-50 dark:bg-neutral-800 rounded-lg">
+                                    <div class="flex items-center justify-between text-sm">
+                                        <div>
+                                            <span class="text-gray-600">Total Roles:</span>
+                                            <span id="totalUserRoles" class="font-medium text-gray-900 ml-1">0</span>
+                                        </div>
+                                        <div>
+                                            <span class="text-gray-600">Selected:</span>
+                                            <span id="selectedUserRoles" class="font-medium text-green-600 ml-1">0</span>
+                                        </div>
+                                        <div>
+                                            <span class="text-gray-600">Changes Made:</span>
+                                            <span id="changesUserRoles" class="font-medium text-blue-600 ml-1">0</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- User Permission Tab Content -->
+                    <div class="hidden" id="user-permission" role="tabpanel" aria-labelledby="user-permission-tab">
+                        @if (!hasEditAccess)
+                        {
+                            <!-- Show message if user doesn't have permission -->
+                            <div class="alert alert-info">
+                                You do not have permission to manage user permissions. Only administrators can manage user permissions.
+                            </div>
+                        }
+                        else
+                        {
+                            <!-- Permission Management Section -->
+                            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 dark:bg-neutral-700 dark:border-neutral-600">
+                                <div class="flex items-center justify-between mb-6">
+                                    <div>
+                                        <h3 class="text-lg font-semibold text-gray-900">User Permissions</h3>
+                                        <p class="text-sm text-gray-600 mt-1">Manage individual permissions for this user by checking/unchecking boxes</p>
+                                    </div>
+                                    <div class="flex items-center space-x-2">
+                                        <button type="button"
+                                                id="saveUserPermissionsBtn"
+                                                class="btn btn-primary border border-primary-600 text-base px-14 py-3 rounded-lg flex items-center">
+                                            <iconify-icon icon="solar:diskette-outline"
+                                                          class="mr-2 text-lg"></iconify-icon>
+                                            <span>Save Changes</span>
+                                        </button>
+       @*                                  <button type="button" id="resetUserPermissionsBtn" class="btn btn-outline-secondary btn-sm" disabled>
+                                            <iconify-icon icon="solar:refresh-outline" class="mr-2"></iconify-icon>
+                                            Reset
+                                        </button> *@
+                                        <button type="button"
+                                                id="resetUserPermissionsBtn"
+                                                class="btn btn-primary border border-primary-600 text-base px-14 py-3 rounded-lg flex items-center">
+                                            <iconify-icon icon="solar:refresh-outline"
+                                                          class="mr-2 text-lg"></iconify-icon>
+                                            <span>Reset</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Filter Section -->
+                                <div class="mb-4 flex flex-wrap items-center gap-4">
+                                    <div class="flex-1 min-w-48">
+                                        <label for="permissionModuleFilter" class="block text-sm font-medium text-gray-700 mb-2">
+                                            Filter by Module
+                                        </label>
+                                        <select id="permissionModuleFilter" class="form-select w-full max-w-xs">
+                                            <option value="">All Modules</option>
+                                            <!-- Options will be populated by JavaScript -->
+                                        </select>
+                                    </div>
+                                    <div class="flex items-center space-x-2">
+                                        <button type="button"
+                                                id="selectAllPermissionsBtn"
+                                                class="btn btn-primary border border-primary-600 text-base px-14 py-3 rounded-lg flex items-center">
+                                            <iconify-icon icon="solar:check-square-outline"
+                                                          class="mr-2 text-lg"></iconify-icon>
+                                            <span>Select All</span>
+                                        </button>
+
+                                        <button type="button" id="deselectAllPermissionsBtn" class="border border-danger-600 bg-hover-danger-200 text-danger-600 text-base px-14 py-[11px] rounded-lg">
+                                            <iconify-icon icon="solar:square-outline" class="mr-1"></iconify-icon>
+                                            Deselect All
+                                        </button>
+
+                                    </div>
+                                </div>
+
+                                <!-- Scrollable Permissions Table -->
+                                <div class="border rounded-lg overflow-hidden">
+                                    <div class="overflow-x-auto">
+                                        <div class="max-h-96 overflow-y-auto">
+                                            <!-- Fixed height with scroll -->
+                                            <table id="userPermissionsTable" class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
+                                                <thead class="bg-gray-50 dark:bg-neutral-800 sticky top-0 z-10">
+                                                    <!-- Sticky header -->
+                                                    <tr>
+                                                        <th scope="col" class="w-12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            <input type="checkbox" id="selectAllPermissionsCheckbox" class="form-checkbox h-4 w-4 text-blue-600 cursor-pointer">
+                                                        </th>
+                                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Permission Name
+                                                        </th>
+                                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Description
+                                                        </th>
+                                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Module
+                                                        </th>
+                                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Status
+                                                        </th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="userPermissionsTableBody" class="bg-white dark:bg-neutral-700 divide-y divide-gray-200 dark:divide-gray-600">
+                                                    <!-- Table rows will be populated by JavaScript -->
+                                                    <tr>
+                                                        <td colspan="5" class="px-6 py-8 text-center text-gray-500">
+                                                            <iconify-icon icon="solar:refresh-outline" class="animate-spin text-2xl mb-2"></iconify-icon>
+                                                            <div>Loading permissions...</div>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Summary Section -->
+                                <div class="mt-6 p-4 bg-gray-50 dark:bg-neutral-800 rounded-lg">
+                                    <div class="flex items-center justify-between text-sm">
+                                        <div>
+                                            <span class="text-gray-600">Total Permissions:</span>
+                                            <span id="totalUserPermissions" class="font-medium text-gray-900 ml-1">0</span>
+                                        </div>
+                                        <div>
+                                            <span class="text-gray-600">Selected:</span>
+                                            <span id="selectedUserPermissions" class="font-medium text-green-600 ml-1">0</span>
+                                        </div>
+                                        <div>
+                                            <span class="text-gray-600">Changes Made:</span>
+                                            <span id="changesUserPermissions" class="font-medium text-blue-600 ml-1">0</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Hidden input to pass user ID to JavaScript -->
+                    <input type="hidden" id="currentUserId" value="@Model.User.Id" />
+
+            </div>
+        </div>
+    </div>
+    </div>
+</div>
+
+@section Scripts {
+    <!-- Include the external script file -->
+    <script src="~/js/pages/users/profile.js" asp-append-version="true"></script>
+}

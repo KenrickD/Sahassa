@@ -1,0 +1,531 @@
+﻿@model WMS.WebApp.Models.Warehouses.WarehousePageViewModel
+
+@{
+    var hasEditAccess = Model.HasEditAccess;
+    var isEdit = Model.IsEdit;
+    ViewData["Title"] = isEdit ? "Edit Warehouse" : "Add Warehouse";
+    ViewData["subTitle"] = isEdit ? "Warehouse / Edit Warehouse" : "Warehouse / Add Warehouse";
+}
+
+<div class="grid grid-cols-12 gap-6">
+    <div class="col-span-12">
+        <div class="card border-0">
+            @if (isEdit)
+            {
+                <!-- Warehouse Overview Header -->
+                <div class="card-header">
+                    <div class="flex flex-wrap items-center justify-between gap-4">
+                        <div>
+                            <h4 class="mb-2">@Model.Warehouse.Name</h4>
+                            <p class="text-neutral-400 mb-0">Warehouse Code: #@Model.Warehouse.Code</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="@(Model.Warehouse.IsActive ? "bg-success-100 dark:bg-success-600/25 text-success-600 dark:text-success-400" : "bg-danger-100 dark:bg-danger-600/25 text-danger-600 dark:text-danger-400") px-6 py-1.5 rounded-full font-medium text-sm">
+                                @(Model.Warehouse.IsActive ? "Active" : "Inactive")
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="card-body pt-0">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                        <div class="card shadow-none border border-gray-200 dark:border-neutral-600 dark:bg-neutral-700 rounded-lg h-full bg-gradient-to-r from-blue-600/10 to-bg-white">
+                            <div class="card-body p-4">
+                                <div class="flex flex-wrap items-center justify-between gap-3">
+                                    <div>
+                                        <p class="font-medium text-neutral-900 dark:text-white mb-1 text-sm">Clients</p>
+                                        <h6 class="mb-0 dark:text-white text-base">@Model.Warehouse.ClientCount</h6>
+                                    </div>
+                                    <div class="w-10 h-10 bg-blue-600 rounded-full flex justify-center items-center">
+                                        <iconify-icon icon="solar:users-group-rounded-line-duotone" class="text-white text-lg mb-0"></iconify-icon>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card shadow-none border border-gray-200 dark:border-neutral-600 dark:bg-neutral-700 rounded-lg h-full bg-gradient-to-r from-green-600/10 to-bg-white">
+                            <div class="card-body p-4">
+                                <div class="flex flex-wrap items-center justify-between gap-3">
+                                    <div>
+                                        <p class="font-medium text-neutral-900 dark:text-white mb-1 text-sm">Zones</p>
+                                        <h6 class="mb-0 dark:text-white text-base">@Model.Warehouse.ZoneCount</h6>
+                                    </div>
+                                    <div class="w-10 h-10 bg-blue-600 rounded-full flex justify-center items-center">
+                                        <iconify-icon icon="solar:layers-outline" class="text-white text-lg mb-0"></iconify-icon>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card shadow-none border border-gray-200 dark:border-neutral-600 dark:bg-neutral-700 rounded-lg h-full bg-gradient-to-r from-purple-600/10 to-bg-white">
+                            <div class="card-body p-4">
+                                <div class="flex flex-wrap items-center justify-between gap-3">
+                                    <div>
+                                        <p class="font-medium text-neutral-900 dark:text-white mb-1 text-sm">Locations</p>
+                                        <h6 class="mb-0 dark:text-white text-base">@Model.Warehouse.LocationCount</h6>
+                                    </div>
+                                    <div class="w-10 h-10 bg-purple-600 rounded-full flex justify-center items-center">
+                                        <iconify-icon icon="solar:map-point-outline" class="text-white text-lg mb-0"></iconify-icon>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card shadow-none border border-gray-200 dark:border-neutral-600 dark:bg-neutral-700 rounded-lg h-full bg-gradient-to-r from-orange-600/10 to-bg-white">
+                            <div class="card-body p-4">
+                                <div class="flex flex-wrap items-center justify-between gap-3">
+                                    <div>
+                                        <p class="font-medium text-neutral-900 dark:text-white mb-1 text-sm">Users</p>
+                                        <h6 class="mb-0 dark:text-white text-base">@Model.Warehouse.UserCount</h6>
+                                    </div>
+                                    <div class="w-10 h-10 bg-purple-600 rounded-full flex justify-center items-center">
+                                        <iconify-icon icon="solar:user-outline" class="text-white text-lg mb-0"></iconify-icon>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="card-header">
+                    <h4 class="mb-0">Add New Warehouse</h4>
+                </div>
+            }
+
+            <div class="card-body">
+                <!-- Tab Navigation -->
+                <div class="mb-6">
+                    <ul class="tab-style-gradient flex flex-wrap -mb-px text-sm font-medium text-center" id="warehouse-tab" data-tabs-toggle="#warehouse-tab-content" role="tablist">
+                        <li class="" role="presentation">
+                            <button class="py-2.5 px-4 border-t-2 font-semibold text-base inline-flex items-center gap-3 text-neutral-600" id="basic-info-tab" data-tabs-target="#basic-info" type="button" role="tab" aria-controls="basic-info" aria-selected="false">
+                                <iconify-icon icon="solar:buildings-outline"></iconify-icon>
+                                Basic Information
+                            </button>
+                        </li>
+                        @if (isEdit)
+                        {
+                            <li class="" role="presentation">
+                                <button class="py-2.5 px-4 border-t-2 font-semibold text-base inline-flex items-center gap-3 text-neutral-600 hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300" id="configuration-tab" data-tabs-target="#configuration" type="button" role="tab" aria-controls="configuration" aria-selected="false">
+                                    <iconify-icon icon="solar:settings-outline"></iconify-icon>
+                                    Configuration
+                                </button>
+                            </li>
+                        }
+                    </ul>
+                </div>
+
+                <div id="warehouse-tab-content">
+                    <!-- Basic Information Tab -->
+                    <div class="hidden" id="basic-info" role="tabpanel" aria-labelledby="basic-info-tab">
+                        <form id="warehouseForm" asp-action="@(isEdit ? "Edit" : "Create")" asp-controller="Warehouse" method="post">
+                            @if (isEdit)
+                            {
+                                <input type="hidden" asp-for="Warehouse.Id" name="Id" />
+                            }
+
+                            <div class="grid grid-cols-12 gap-4">
+                                <!-- Warehouse Name -->
+                                <div class="md:col-span-6 col-span-12">
+                                    <label class="form-label">Warehouse Name <span class="text-danger-600">*</span></label>
+                                    <div class="icon-field">
+                                        <span class="icon">
+                                            <iconify-icon icon="solar:buildings-outline"></iconify-icon>
+                                        </span>
+                                        <input type="text"
+                                               asp-for="Warehouse.Name"
+                                               name="Name"
+                                               class="form-control"
+                                               placeholder="Enter Warehouse Name"
+                                               readonly="@(!hasEditAccess)"
+                                               required>
+                                    </div>
+                                    <span asp-validation-for="Warehouse.Name" class="text-danger-600 text-sm"></span>
+                                </div>
+
+                                <!-- Warehouse Code -->
+                                <div class="md:col-span-6 col-span-12">
+                                    <label class="form-label">Warehouse Code <span class="text-danger-600">*</span></label>
+                                    <div class="icon-field">
+                                        <span class="icon">
+                                            <iconify-icon icon="solar:code-outline"></iconify-icon>
+                                        </span>
+                                        <input type="text"
+                                               asp-for="Warehouse.Code"
+                                               name="Code"
+                                               class="form-control font-mono"
+                                               placeholder="Enter Warehouse Code"
+                                               readonly="@(!hasEditAccess)"
+                                               required>
+                                    </div>
+                                    <span asp-validation-for="Warehouse.Code" class="text-danger-600 text-sm"></span>
+                                </div>
+
+                                <!-- Address -->
+                                <div class="md:col-span-12 col-span-12">
+                                    <label class="form-label">Address</label>
+                                    <div class="icon-field">
+                                        <span class="icon">
+                                            <iconify-icon icon="solar:map-point-outline"></iconify-icon>
+                                        </span>
+                                        <textarea asp-for="Warehouse.Address" name="Address"
+                                                  class="form-control"
+                                                  rows="3"
+                                                  placeholder="Enter full address..."
+                                                  readonly="@(!hasEditAccess)"></textarea>
+                                    </div>
+                                    <span asp-validation-for="Warehouse.Address" class="text-danger-600 text-sm"></span>
+                                </div>
+
+                                <!-- City -->
+                                <div class="md:col-span-4 col-span-12">
+                                    <label class="form-label">City</label>
+                                    <input type="text"
+                                           asp-for="Warehouse.City"
+                                           name="City"
+                                           class="form-control"
+                                           placeholder="Enter City"
+                                           readonly="@(!hasEditAccess)">
+                                    <span asp-validation-for="Warehouse.City" class="text-danger-600 text-sm"></span>
+                                </div>
+
+                                <!-- State -->
+                                <div class="md:col-span-4 col-span-12">
+                                    <label class="form-label">State/Province</label>
+                                    <input type="text"
+                                           asp-for="Warehouse.State"
+                                           name="State"
+                                           class="form-control"
+                                           placeholder="Enter State/Province"
+                                           readonly="@(!hasEditAccess)">
+                                    <span asp-validation-for="Warehouse.State" class="text-danger-600 text-sm"></span>
+                                </div>
+
+                                <!-- Country -->
+                                <div class="md:col-span-4 col-span-12">
+                                    <label class="form-label">Country</label>
+                                    <input type="text"
+                                           asp-for="Warehouse.Country"
+                                           name="Country"
+                                           class="form-control"
+                                           placeholder="Enter Country"
+                                           readonly="@(!hasEditAccess)">
+                                    <span asp-validation-for="Warehouse.Country" class="text-danger-600 text-sm"></span>
+                                </div>
+
+                                <!-- Zip Code -->
+                                <div class="md:col-span-6 col-span-12">
+                                    <label class="form-label">Zip/Postal Code</label>
+                                    <input type="text"
+                                           asp-for="Warehouse.ZipCode"
+                                           name="ZipCode"
+                                           class="form-control"
+                                           placeholder="Enter Zip/Postal Code"
+                                           readonly="@(!hasEditAccess)">
+                                    <span asp-validation-for="Warehouse.ZipCode" class="text-danger-600 text-sm"></span>
+                                </div>
+
+                                <!-- Status -->
+                                <div class="md:col-span-6 col-span-12">
+                                    <label class="form-label">Status</label>
+                                    <select asp-for="Warehouse.IsActive" name="IsActive"
+                                            class="form-control form-select"
+                                            disabled="@(!hasEditAccess)">
+                                        <option value="true">Active</option>
+                                        <option value="false">Inactive</option>
+                                    </select>
+                                    <span asp-validation-for="Warehouse.IsActive" class="text-danger-600 text-sm"></span>
+                                </div>
+
+                                <!-- Contact Information Section -->
+                                <div class="col-span-12">
+                                    <h6 class="text-lg font-semibold mb-4 flex items-center gap-2 mt-6">
+                                        <iconify-icon icon="solar:phone-outline" class="text-blue-600"></iconify-icon>
+                                        Contact Information
+                                    </h6>
+                                </div>
+
+                                <!-- Contact Person -->
+                                <div class="md:col-span-4 col-span-12">
+                                    <label class="form-label">Contact Person</label>
+                                    <div class="icon-field">
+                                        <span class="icon">
+                                            <iconify-icon icon="f7:person"></iconify-icon>
+                                        </span>
+                                        <input type="text"
+                                               asp-for="Warehouse.ContactPerson"
+                                               name="ContactPerson"
+                                               class="form-control"
+                                               placeholder="Enter Contact Person"
+                                               readonly="@(!hasEditAccess)">
+                                    </div>
+                                    <span asp-validation-for="Warehouse.ContactPerson" class="text-danger-600 text-sm"></span>
+                                </div>
+
+                                <!-- Contact Email -->
+                                <div class="md:col-span-4 col-span-12">
+                                    <label class="form-label">Contact Email</label>
+                                    <div class="icon-field">
+                                        <span class="icon">
+                                            <iconify-icon icon="mage:email"></iconify-icon>
+                                        </span>
+                                        <input type="email"
+                                               asp-for="Warehouse.ContactEmail"
+                                               name="ContactEmail"
+                                               class="form-control"
+                                               placeholder="Enter Contact Email"
+                                               readonly="@(!hasEditAccess)">
+                                    </div>
+                                    <span asp-validation-for="Warehouse.ContactEmail" class="text-danger-600 text-sm"></span>
+                                </div>
+
+                                <!-- Contact Phone -->
+                                <div class="md:col-span-4 col-span-12">
+                                    <label class="form-label">Contact Phone</label>
+                                    <div class="icon-field">
+                                        <span class="icon">
+                                            <iconify-icon icon="solar:phone-calling-linear"></iconify-icon>
+                                        </span>
+                                        <input type="tel"
+                                               asp-for="Warehouse.ContactPhone"
+                                               name="ContactPhone"
+                                               class="form-control"
+                                               placeholder="+1 (555) 000-0000"
+                                               readonly="@(!hasEditAccess)">
+                                    </div>
+                                    <span asp-validation-for="Warehouse.ContactPhone" class="text-danger-600 text-sm"></span>
+                                </div>
+
+                                <!-- Form Actions -->
+                                <div class="col-span-12">
+                                    @if (hasEditAccess)
+                                    {
+                                        <div class="flex items-center justify-end gap-3 mt-4">
+                                            <a asp-controller="Warehouse" asp-action="Index"
+                                               class="btn bg-neutral-400 border-neutral-400 hover:bg-neutral-500 hover:border-neutral-500 text-white px-8">
+                                                Cancel
+                                            </a>
+                                            <button type="submit" class="btn btn-primary-600 px-8">
+                                                @(isEdit ? "Update Warehouse" : "Create Warehouse")
+                                            </button>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="flex items-center justify-end gap-3 mt-4">
+                                            <a asp-controller="Warehouse" asp-action="Index"
+                                               class="btn bg-neutral-400 border-neutral-400 hover:bg-neutral-500 hover:border-neutral-500 text-white px-8">
+                                                Back To List
+                                            </a>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Configuration Tab -->
+                    @if (isEdit)
+                    {
+                        <div class="hidden" id="configuration" role="tabpanel" aria-labelledby="configuration-tab">
+                            @if (!hasEditAccess)
+                            {
+                                <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200 px-4 py-3 rounded-lg">
+                                    <div class="flex items-center">
+                                        <iconify-icon icon="solar:info-circle-outline" class="text-lg mr-2"></iconify-icon>
+                                        <span>You do not have permission to manage warehouse configuration.</span>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <form id="configurationForm">
+                                    <input type="hidden" id="warehouseId" value="@Model.Warehouse.Id" />
+
+                                    <div class="grid grid-cols-12 gap-6">
+                                        <!-- Inventory Management Section -->
+                                        <div class="md:col-span-6 col-span-12">
+                                            <div class="card border-0 bg-gray-50 dark:bg-neutral-800">
+                                                <div class="card-body p-4">
+                                                    <h6 class="text-base font-semibold mb-4 flex items-center gap-2">
+                                                        <iconify-icon icon="solar:box-outline"></iconify-icon>
+                                                        Inventory Management
+                                                    </h6>
+
+                                                    <div class="space-y-4">
+                                                        <div class="flex items-center gap-3">
+                                                            <input type="checkbox"
+                                                                   id="requiresLotTracking"
+                                                                   asp-for="Warehouse.RequiresLotTracking"
+                                                                   name="RequiresLotTracking"
+                                                                   class="form-checkbox h-4 w-4 text-primary-600">
+                                                            <label for="requiresLotTracking" class="text-sm font-medium">
+                                                                Requires Lot Tracking
+                                                            </label>
+                                                        </div>
+
+                                                        <div class="flex items-center gap-3">
+                                                            <input type="checkbox"
+                                                                   id="requiresExpirationDates"
+                                                                   asp-for="Warehouse.RequiresExpirationDates"
+                                                                   name="RequiresExpirationDates"
+                                                                   class="form-checkbox h-4 w-4 text-primary-600">
+                                                            <label for="requiresExpirationDates" class="text-sm font-medium">
+                                                                Requires Expiration Dates
+                                                            </label>
+                                                        </div>
+
+                                                        <div class="flex items-center gap-3">
+                                                            <input type="checkbox"
+                                                                   id="usesSerialNumbers"
+                                                                   asp-for="Warehouse.UsesSerialNumbers"
+                                                                   name="UsesSerialNumbers"
+                                                                   class="form-checkbox h-4 w-4 text-primary-600">
+                                                            <label for="usesSerialNumbers" class="text-sm font-medium">
+                                                                Uses Serial Numbers
+                                                            </label>
+                                                        </div>
+
+                                                        <div class="flex items-center gap-3">
+                                                            <input type="checkbox"
+                                                                   id="autoAssignLocations"
+                                                                   asp-for="Warehouse.AutoAssignLocations"
+                                                                   name="AutoAssignLocations"
+                                                                   class="form-checkbox h-4 w-4 text-primary-600">
+                                                            <label for="autoAssignLocations" class="text-sm font-medium">
+                                                                Auto Assign Locations
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Operational Settings Section -->
+                                        <div class="md:col-span-6 col-span-12">
+                                            <div class="card border-0 bg-gray-50 dark:bg-neutral-800">
+                                                <div class="card-body p-4">
+                                                    <h6 class="text-base font-semibold mb-4 flex items-center gap-2">
+                                                        <iconify-icon icon="solar:settings-outline"></iconify-icon>
+                                                        Operational Settings
+                                                    </h6>
+
+                                                    <div class="space-y-4">
+                                                        <div>
+                                                            <label class="form-label">Inventory Strategy</label>
+                                                            <select asp-for="Warehouse.InventoryStrategy" name="InventoryStrategy"
+                                                                    class="form-control form-select">
+                                                                <option value="FIFO">First In, First Out (FIFO)</option>
+                                                                <option value="LIFO">Last In, First Out (LIFO)</option>
+                                                                <option value="FEFO">First Expired, First Out (FEFO)</option>
+                                                            </select>
+                                                        </div>
+
+                                                        <div>
+                                                            <label class="form-label">Default Measurement Unit</label>
+                                                            <input type="text"
+                                                                   asp-for="Warehouse.DefaultMeasurementUnit"
+                                                                   name="DefaultMeasurementUnit"
+                                                                   class="form-control"
+                                                                   placeholder="e.g., PCS, KG, M">
+                                                        </div>
+
+                                                        <div>
+                                                            <label class="form-label">Default Days to Expiry</label>
+                                                            <input type="number"
+                                                                   asp-for="Warehouse.DefaultDaysToExpiry"
+                                                                   name="DefaultDaysToExpiry"
+                                                                   class="form-control"
+                                                                   min="1" max="365"
+                                                                   placeholder="365">
+                                                        </div>
+
+                                                        <div>
+                                                            <label class="form-label">Barcode Format</label>
+                                                            <input type="text"
+                                                                   asp-for="Warehouse.BarcodeFormat"
+                                                                   name="BarcodeFormat"
+                                                                   class="form-control"
+                                                                   placeholder="e.g., CODE128">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Branding Section -->
+                                      @*   <div class="col-span-12">
+                                            <div class="card border-0 bg-gray-50 dark:bg-neutral-800">
+                                                <div class="card-body p-4">
+                                                    <h6 class="text-base font-semibold mb-4 flex items-center gap-2">
+                                                        <iconify-icon icon="solar:palette-outline"></iconify-icon>
+                                                        Branding & Theme
+                                                    </h6>
+
+                                                    <div class="grid grid-cols-12 gap-4">
+                                                        <div class="md:col-span-4 col-span-12">
+                                                            <label class="form-label">Company Logo URL</label>
+                                                            <input type="url"
+                                                                   asp-for="Warehouse.CompanyLogoUrl"
+                                                                   name="CompanyLogoUrl"
+                                                                   class="form-control"
+                                                                   placeholder="https://example.com/logo.png">
+                                                        </div>
+
+                                                        <div class="md:col-span-4 col-span-12">
+                                                            <label class="form-label">Primary Color</label>
+                                                            <input type="color"
+                                                                   asp-for="Warehouse.ThemePrimaryColor"
+                                                                   name="ThemePrimaryColor"
+                                                                   class="form-control h-12">
+                                                        </div>
+
+                                                        <div class="md:col-span-4 col-span-12">
+                                                            <label class="form-label">Secondary Color</label>
+                                                            <input type="color"
+                                                                   asp-for="Warehouse.ThemeSecondaryColor"
+                                                                   name="ThemeSecondaryColor"
+                                                                   class="form-control h-12">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div> *@
+
+                                        <!-- Configuration Actions -->
+                                        <div class="col-span-12">
+                                            <div class="flex items-center justify-end gap-3 mt-4">
+
+                                                <a asp-controller="Warehouse" asp-action="Index"
+                                                   class="btn bg-neutral-400 border-neutral-400 hover:bg-neutral-500 hover:border-neutral-500 text-white px-8">
+                                                    Back To List
+                                                </a>
+
+                                                <button type="button" id="resetConfigBtn"
+                                                        class="btn bg-neutral-400 border-neutral-400 hover:bg-neutral-500 hover:border-neutral-500 text-white px-8">
+                                                    Reset
+                                                </button>
+                                                <button type="button" id="saveConfigBtn"
+                                                        class="btn btn-primary-600 px-8">
+                                                    Save Configuration
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </form>
+                            }
+                        </div>
+                    }
+                </div>
+                <input type="hidden" id="currentWarehouseId" value="@Model.Warehouse.Id" />
+
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/pages/warehouses/detail.js" asp-append-version="true"></script>
+}

@@ -1,0 +1,512 @@
+﻿@{
+    ViewData["Title"] = "Containers";
+    ViewData["subTitle"] = "Container Management";
+    var hasEditAccess = ViewBag.HasEditAccess ?? false;
+    var hasDeleteAccess = ViewBag.HasDeleteAccess ?? false;
+    var hasViewAccess = ViewBag.HasViewAccess ?? false;
+}
+
+@Html.AntiForgeryToken()
+
+<!-- Permission Flags for JS -->
+<script>
+    window.hasEditAccess = @hasEditAccess.ToString().ToLower();
+    window.hasDeleteAccess = @hasDeleteAccess.ToString().ToLower();
+    window.hasViewAccess = @hasViewAccess.ToString().ToLower();
+</script>
+
+<div class="grid grid-cols-12">
+    <div class="col-span-12">
+        <div class="card border-0 overflow-hidden">
+            <div class="card-header flex items-center justify-between">
+                <h6 class="card-title mb-0 text-lg">Container Listing</h6>
+            </div>
+            <div class="card-body">
+                <table id="container-table" class="border border-neutral-200 dark:border-neutral-600 rounded-lg border-separate">
+                    <thead>
+                        <tr>
+                            <th scope="col" class="text-neutral-800 dark:text-white">
+                                <div class="flex items-center gap-2">Container No</div>
+                            </th>
+                            <th scope="col" class="text-neutral-800 dark:text-white">
+                                <div class="flex items-center gap-2">POs</div>
+                            </th>
+                            <th scope="col" class="text-neutral-800 dark:text-white">
+                                <div class="flex items-center gap-2">Planned Delivery</div>
+                            </th>
+                            <th scope="col" class="text-neutral-800 dark:text-white">
+                                <div class="flex items-center gap-2">Remarks</div>
+                            </th>
+                            <th scope="col" class="text-neutral-800 dark:text-white">
+                                <div class="flex items-center gap-2">Unstuffed By</div>
+                            </th>
+                            <th scope="col" class="text-neutral-800 dark:text-white">
+                                <div class="flex items-center gap-2">Unstuffed Date</div>
+                            </th>
+                            <th scope="col" class="text-neutral-800 dark:text-white">
+                                <div class="flex items-center gap-2">URL</div>
+                            </th>
+                            <th scope="col" class="text-neutral-800 dark:text-white">
+                                <div class="form-check style-check flex items-center">
+                                    <label class="ms-2 form-check-label">IsLoose</label>
+                                </div>
+                            </th>
+                            <th scope="col" class="text-neutral-800 dark:text-white">
+                                <div class="form-check style-check flex items-center">
+                                    <label class="ms-2 form-check-label">IsSampling</label>
+                                </div>
+                            </th>
+                            <th scope="col" class="text-neutral-800 dark:text-white">
+                                <div class="flex items-center gap-2">Photos</div>
+                            </th>
+                            <th scope="col" class="text-neutral-800 dark:text-white">
+                                <div class="flex items-center gap-2">Add Photo</div>
+                            </th>
+                            <th scope="col" class="text-neutral-800 dark:text-white">
+                                <div class="flex items-center gap-2">ATCH</div>
+                            </th>
+                            <th scope="col" class="text-neutral-800 dark:text-white">
+                                <div class="flex items-center gap-2">Report</div>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- DataTables will populate this -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Photo Gallery Modal -->
+<div id="photoGalleryModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-lg w-full max-w-6xl h-2/3 overflow-hidden flex flex-col">
+            <!-- Modal Header -->
+            <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 border-b border-gray-200 dark:border-gray-600 flex-shrink-0">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-xl font-semibold text-gray-900 dark:text-white">Container Photos</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">
+                            <span id="photoCount">0</span> photos total
+                        </p>
+                    </div>
+                    <button type="button" id="closePhotoGalleryModal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        <iconify-icon icon="heroicons:x-mark" class="text-2xl"></iconify-icon>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Modal Content -->
+            <div class="flex-1 p-6 overflow-y-auto">
+                <div id="photo-gallery" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-6"></div>
+
+                <!-- Pagination -->
+                <div id="photoPagination" class="flex items-center justify-center gap-2 mt-6">
+                    <button id="prevPhotoPage" class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <iconify-icon icon="heroicons:chevron-left" class="text-base"></iconify-icon>
+                    </button>
+                    <span id="photoPageInfo" class="text-sm text-gray-600 dark:text-gray-400 mx-4">Page 1 of 1</span>
+                    <button id="nextPhotoPage" class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <iconify-icon icon="heroicons:chevron-right" class="text-base"></iconify-icon>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 border-t border-gray-200 dark:border-gray-600 flex-shrink-0">
+                <div class="flex items-center justify-end">
+                    <button type="button" id="closePhotoGalleryModalBtn" class="btn btn-outline-secondary px-4 py-2">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Image Slideshow Modal -->
+<div id="slideshowModal" class="fixed inset-0 bg-black bg-opacity-90 hidden" style="z-index: 9999;">
+    <div class="flex items-center justify-center min-h-screen p-6">
+        <div id="slideshowContainer" class="bg-white dark:bg-gray-800 rounded-lg w-full overflow-hidden flex flex-col" style="max-width: 90vw; max-height: 90vh;">
+            <!-- Slideshow Header -->
+            <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 border-b border-gray-200 dark:border-gray-600 flex-shrink-0">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-xl font-semibold text-gray-900 dark:text-white">Photo Viewer</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">
+                            Photo <span id="currentPhotoIndex">1</span> of <span id="totalPhotosCount">1</span>
+                            <span id="imageInfo" class="ml-2"></span>
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <!-- View Mode Toggle -->
+                        <div class="flex items-center gap-1 bg-gray-200 dark:bg-gray-600 rounded-lg p-1">
+                            <button id="fitToWindowBtn" class="px-3 py-1 text-sm font-medium rounded bg-primary-600 text-white hover:bg-primary-700" title="Fit to Window">
+                                Fit
+                            </button>
+                            <button id="actualSizeBtn" class="px-3 py-1 text-sm font-medium rounded text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500" title="Actual Size">
+                                100%
+                            </button>
+                        </div>
+
+                        <!-- Zoom Level Display -->
+                        <div class="flex items-center gap-1 bg-gray-200 dark:bg-gray-600 rounded-lg px-3 py-1">
+                            <span id="zoomLevel" class="text-sm font-medium text-gray-700 dark:text-gray-300 min-w-[50px] text-center">100%</span>
+                        </div>
+
+                        <button type="button" id="closeSlideshowModal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                            <iconify-icon icon="heroicons:x-mark" class="text-2xl"></iconify-icon>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slideshow Content -->
+            <div class="flex-1 relative bg-gray-100 dark:bg-gray-900 min-h-0">
+                <!-- Image Container with Click-to-Zoom -->
+                <div id="imageContainer" class="absolute inset-0 flex items-center justify-center p-4 overflow-auto">
+                    <img id="slideshowImage" class="transition-transform duration-200 shadow-lg cursor-pointer" style="transform-origin: center center;" alt="Slideshow Image" title="Click to toggle zoom">
+                </div>
+
+                <!-- Navigation Arrows - Fixed positioning -->
+                <button id="prevImageBtn" class="fixed left-4 top-1/2 transform -translate-y-1/2 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 p-3 rounded-full shadow-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed border border-gray-200 dark:border-gray-600 z-10" title="Previous Image" style="position: absolute !important; left: 16px !important;">
+                    <iconify-icon icon="heroicons:chevron-left" class="text-xl"></iconify-icon>
+                </button>
+                <button id="nextImageBtn" class="fixed right-4 top-1/2 transform -translate-y-1/2 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 p-3 rounded-full shadow-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed border border-gray-200 dark:border-gray-600 z-10" title="Next Image" style="position: absolute !important; right: 16px !important;">
+                    <iconify-icon icon="heroicons:chevron-right" class="text-xl"></iconify-icon>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Photo Modal -->
+<div id="uploadPhotoModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-lg w-full max-w-2xl h-2/3 overflow-hidden flex flex-col">
+            <!-- Modal Header -->
+            <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 border-b border-gray-200 dark:border-gray-600 flex-shrink-0">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-xl font-semibold text-gray-900 dark:text-white">Upload Photos</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Select photos to upload to this container</p>
+                    </div>
+                    <button type="button" id="closeUploadPhotoModal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        <iconify-icon icon="heroicons:x-mark" class="text-2xl"></iconify-icon>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Modal Content -->
+            <div class="p-6 flex-1 overflow-y-auto">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Select Photos (Multiple files supported)
+                    </label>
+                    <div class="relative">
+                        <input type="file" id="uploadInput" multiple accept="image/*"
+                               class="block w-full text-sm text-gray-500 dark:text-gray-400
+                                      file:mr-4 file:py-2 file:px-4
+                                      file:rounded-lg file:border-0
+                                      file:text-sm file:font-semibold
+                                      file:bg-blue-50 file:text-blue-700
+                                      hover:file:bg-blue-100
+                                      dark:file:bg-blue-900 dark:file:text-blue-300
+                                      dark:hover:file:bg-blue-800
+                                      border border-gray-200 dark:border-gray-600 rounded-lg">
+                        <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                            You can select multiple photos at once. Supported formats: JPG, PNG, GIF
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Upload Preview Section -->
+                <div id="uploadPreviewSection" class="hidden">
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Photos to Upload (<span id="uploadCountDisplay">0</span>)
+                        </h4>
+                        <button type="button" id="clearAllPhotos" class="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300">
+                            Clear All
+                        </button>
+                    </div>
+                    <div id="uploadPreview" class="grid grid-cols-8 gap-2 max-h-60 overflow-y-auto p-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700"></div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 border-t border-gray-200 dark:border-gray-600 flex-shrink-0">
+                <div class="flex items-center justify-between">
+                    <div class="text-sm text-gray-600 dark:text-gray-400">
+                        <span id="selectedFilesCount">0</span> file(s) selected
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <button type="button" id="cancelUploadBtn" class="btn btn-outline-secondary px-4 py-2">Cancel</button>
+                        <button type="button" id="uploadConfirmBtn" class="btn btn-primary px-4 py-2 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                            <iconify-icon icon="heroicons:cloud-arrow-up"></iconify-icon>
+                            Upload <span id="uploadBtnCount">0</span> Photos
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- FIXED Container Receive Pallets Modal with Proper Scrolling -->
+<div id="containerPalletsModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <!-- CRITICAL: Fixed modal height constraint -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg w-full max-w-7xl flex flex-col h-[67vh]">
+
+            <!-- Modal Header - FIXED HEIGHT -->
+            <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 border-b border-gray-200 dark:border-gray-600 flex-shrink-0">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-xl font-semibold text-gray-900 dark:text-white">Receive Pallets</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-400" id="containerPalletsInfo">
+                            Loading...
+                        </p>
+                    </div>
+                    <button type="button" id="closeContainerPalletsModal"
+                            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        <iconify-icon icon="heroicons:x-mark" class="text-2xl"></iconify-icon>
+                    </button>
+                </div>
+            </div>
+
+            <!-- CRITICAL: Modal Content with FLEX LAYOUT and HEIGHT CONSTRAINT -->
+            <div class="flex flex-col flex-1 min-h-0 p-6">
+
+                <!-- Controls Section - FIXED HEIGHT -->
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 flex-shrink-0">
+                    <!-- Left: Search Box -->
+                    <div class="flex items-center">
+                        <div class="relative">
+                            <input type="text" id="palletSearchInput"
+                                   placeholder="Search by MHU or HU..."
+                                   class="form-control w-full sm:w-80 pl-10 pr-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white">
+                        </div>
+                    </div>
+
+                    <!-- Right: Page Size Selector -->
+                    <div class="flex items-center gap-2 text-sm">
+                        <span class="text-gray-600 dark:text-gray-400 whitespace-nowrap">Show</span>
+                        <select id="palletPageSize" class="form-select text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white">
+                            <option value="10">10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                        <span class="text-gray-600 dark:text-gray-400 whitespace-nowrap">entries</span>
+                    </div>
+                </div>
+
+                <!-- CRITICAL: Table Container with PROPER HEIGHT CONSTRAINT and SCROLLING -->
+                <div class="flex-1 min-h-0 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 overflow-hidden">
+                    <!-- SCROLLABLE TABLE WRAPPER -->
+                    <div class="h-full overflow-auto">
+                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
+                            <!-- STICKY HEADER -->
+                            <thead class="bg-gray-50 dark:bg-gray-700 sticky top-0 z-10">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap">
+                                        MHU
+                                    </th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap">
+                                        Pack Size
+                                    </th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap">
+                                        Quantity
+                                    </th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap">
+                                        Qty Balance
+                                    </th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                                        Details
+                                    </th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap">
+                                        Location
+                                    </th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap">
+                                        Photos
+                                    </th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap">
+                                        Actions
+                                    </th>
+                                </tr>
+                            </thead>
+                            <!-- SCROLLABLE BODY -->
+                            <tbody id="containerPalletsTableBody" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-600">
+                                <tr>
+                                    <td colspan="9" class="px-6 py-8 text-center text-gray-500">
+                                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-4"></div>
+                                        <p>Loading pallets...</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Bottom Info and Pagination - FIXED HEIGHT -->
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mt-4 pt-4 border-t border-gray-200 dark:border-gray-600 flex-shrink-0">
+
+                    <!-- Left: Showing entries info -->
+                    <div class="text-sm text-gray-600 dark:text-gray-400 order-2 sm:order-1">
+                        Showing <span id="palletShowingFrom" class="font-medium">0</span> to
+                        <span id="palletShowingTo" class="font-medium">0</span> of
+                        <span id="palletTotalCount" class="font-medium">0</span> entries
+                    </div>
+
+                    <!-- Right: Pagination Controls -->
+                    <div class="flex items-center justify-center gap-1 order-1 sm:order-2">
+                        <button id="palletFirstPage"
+                                class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="First page">
+                            <iconify-icon icon="heroicons:chevron-double-left" class="text-base"></iconify-icon>
+                        </button>
+                        <button id="palletPrevPage"
+                                class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Previous page">
+                            <iconify-icon icon="heroicons:chevron-left" class="text-base"></iconify-icon>
+                        </button>
+
+                        <!-- Page Info -->
+                        <span class="px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md">
+                            Page <span id="palletCurrentPage" class="font-medium">1</span> of
+                            <span id="palletTotalPages" class="font-medium">1</span>
+                        </span>
+
+                        <button id="palletNextPage"
+                                class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Next page">
+                            <iconify-icon icon="heroicons:chevron-right" class="text-base"></iconify-icon>
+                        </button>
+                        <button id="palletLastPage"
+                                class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Last page">
+                            <iconify-icon icon="heroicons:chevron-double-right" class="text-base"></iconify-icon>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div id="palletItemsModal" class="hidden">
+    <div>
+        <!-- Modal Header -->
+        <div class="bg-gray-50 dark:bg-gray-700">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white" id="palletItemsTitle">
+                        Pallet Items
+                    </h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">
+                        Detailed item information for this pallet
+                    </p>
+                </div>
+                <button type="button" id="closePalletItemsModal" title="Close modal">
+                    <iconify-icon icon="heroicons:x-mark" class="text-xl"></iconify-icon>
+                </button>
+            </div>
+        </div>
+
+        <!-- Modal Content -->
+        <div id="palletItemsContent">
+            <!-- Items will be populated here -->
+            <div class="text-center py-12">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+                <p class="text-gray-600 dark:text-gray-400">Loading pallet items...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 1. ADD TO RAZOR VIEW (paste.txt) - Insert this modal after the existing modals -->
+<!-- View Attachments Modal -->
+<div id="viewAttachmentsModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-lg w-full max-w-4xl h-2/3 overflow-hidden flex flex-col">
+            <!-- Modal Header -->
+            <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 border-b border-gray-200 dark:border-gray-600 flex-shrink-0">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-xl font-semibold text-gray-900 dark:text-white">Container Attachments</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">
+                            <span id="attachmentCount">0</span> attachment(s) available
+                        </p>
+                    </div>
+                    <button type="button" id="closeViewAttachmentsModal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        <iconify-icon icon="heroicons:x-mark" class="text-2xl"></iconify-icon>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Modal Content -->
+            <div class="flex-1 p-6 overflow-y-auto">
+                <!-- Loading State -->
+                <div id="attachmentsLoading" class="text-center py-12 hidden">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+                    <p class="text-gray-600 dark:text-gray-400">Loading attachments...</p>
+                </div>
+
+                <!-- No Attachments State -->
+                <div id="noAttachmentsMessage" class="text-center py-12 hidden">
+                    <iconify-icon icon="heroicons:document" class="text-4xl text-gray-400 mb-4"></iconify-icon>
+                    <p class="text-gray-500 dark:text-gray-400">No attachments found for this container</p>
+                </div>
+
+                <!-- Error State -->
+                <div id="attachmentsError" class="text-center py-12 text-red-500 hidden">
+                    <iconify-icon icon="heroicons:exclamation-triangle" class="text-4xl mb-4"></iconify-icon>
+                    <p class="text-lg font-medium mb-2">Failed to load attachments</p>
+                    <p class="text-sm">Please try again later</p>
+                </div>
+
+                <!-- Attachments Table -->
+                <div id="attachmentsTableContainer" class="hidden">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
+                            <thead class="bg-gray-50 dark:bg-gray-700">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        File Name
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        Reference
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        Type
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        Actions
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody id="attachmentsTableBody" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-600">
+                                <!-- Dynamic content will be inserted here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 border-t border-gray-200 dark:border-gray-600 flex-shrink-0">
+                <div class="flex items-center justify-end">
+                    <button type="button" id="closeViewAttachmentsModalBtn" class="btn btn-outline-secondary px-4 py-2">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Hidden file input for replace functionality -->
+<input type="file" id="replacePhotoInput" class="hidden" accept="image/*" />
+@section Styles {
+    <link rel="stylesheet" href="~/css/pages/container/container-table.css" asp-append-version="true" />
+}
+@section Scripts {
+    <script src="~/js/pages/container/container-table.js" asp-append-version="true"></script>
+}

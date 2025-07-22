@@ -1,0 +1,39 @@
+﻿@using WMS.Domain.DTOs.GIV_RM_ReceivePallet
+@using WMS.Domain.DTOs.GIV_RM_ReceivePalletItem
+@model Guid
+
+@{
+    ViewData["Title"] = "Receive Pallets";
+    var isGrouped = ViewBag.IsGrouped ?? false;
+    var groupId = ViewBag.GroupId as Guid?;
+}
+
+@Html.AntiForgeryToken()
+
+<h2>Receive Pallets</h2>
+
+<table id="pallets-table" class="table table-bordered" data-receive-id="@Model" data-is-grouped="@isGrouped.ToString().ToLower()"
+       @(groupId.HasValue ? $"data-group-id=\"{groupId}\"" : "")>
+    <thead>
+        <tr>
+            <th>MHU</th>
+            <th>Pack Size</th>
+            <th>Quantity</th>
+            <th>Quantity Balance</th>
+            <th>Details (HU / DG / Remarks / Prod Date)</th>
+            <th>Location</th>
+            <th>Photos</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        <!-- Populated via JavaScript -->
+    </tbody>
+</table>
+
+<!-- Modal container -->
+<div id="modal-container"></div>
+
+@section Scripts {
+    <script src="~/js/pages/raw-material/pallets-table.js" asp-append-version="true"></script>
+}

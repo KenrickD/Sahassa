@@ -1,0 +1,97 @@
+﻿@{
+    ViewData["Title"] = "Finished Goods Inventory";
+}
+@Html.AntiForgeryToken()
+<div class="row">
+    <div class="col-lg-12 grid-margin stretch-card">
+        <div class="card">
+            <div class="card-body">
+                <div class="row">
+                    <h4 class="card-title">FINISHED GOODS INVENTORY</h4>
+                </div>
+                <div class="mb-3 text-end">
+                    <a id="addFinishedGoodBtn" asp-action="CreateFinishedGood" asp-controller="FinishedGood"
+                       class="inline-flex items-center gap-2 bg-success-100 dark:bg-success-600/25 text-success-600 dark:text-success-400 rounded px-3 py-2 text-sm font-medium hover:bg-success-200 transition hidden"
+                       title="Add Finished Good">
+                        <iconify-icon icon="lucide:plus-circle" width="20" height="20"></iconify-icon>
+                        Add Finished Good
+                    </a>
+                </div>
+                <div id="grand-totals-panel" class="p-4 mb-4 bg-neutral-50 dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700">
+                    <div class="flex justify-end items-center">
+                        <div class="flex gap-6">
+                            <div class="flex flex-col items-center">
+                                <span class="text-sm text-neutral-600 dark:text-neutral-400">Total Balance Pallets</span>
+                                <span id="grand-total-pallets" class="text-xl font-bold">0</span>
+                            </div>
+                            <div class="flex flex-col items-center">
+                                <span class="text-sm text-neutral-600 dark:text-neutral-400">Total Balance Quantity</span>
+                                <span id="grand-total-qty" class="text-xl font-bold">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="FinishedGoodDataTable">
+                    <table class="table table-hover w-100" id="FGDataTable" data-url="@Url.Action("GetPaginatedFinishedGoods", "FinishedGood")">
+                        <thead>
+                            <tr>
+                                <th class="text-neutral-800 dark:text-white text-left">SKU</th>
+                                <th class="text-neutral-800 dark:text-white text-left">Description</th>
+                                <th class="text-neutral-800 dark:text-white text-left">Groups</th>
+                                <th class="text-neutral-800 dark:text-white text-left">Total Balance Qty</th>
+                                <th class="text-neutral-800 dark:text-white text-left">Total Balance Pallet</th>
+                                <th class="text-neutral-800 dark:text-white text-left">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Include the styles -->
+<style>
+    /* Table alignment */
+    #FGDataTable th,
+    #FGDataTable td {
+        text-align: left !important;
+    }
+
+    /* Checkbox styles */
+    .group-checkbox {
+        cursor: pointer;
+    }
+
+    /* Hover effect for rows */
+    #FGDataTable tbody tr:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    /* Dark mode adjustments */
+    .dark #FGDataTable tbody tr:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+    }
+</style>
+
+@section Scripts {
+    <script src="~/js/pages/finished-good/finished-good-table.js" asp-append-version="true"></script>
+    <script>
+        const successMessage = sessionStorage.getItem("successMessage");
+        if (successMessage) {
+            toastr.success(successMessage);
+            sessionStorage.removeItem("successMessage");
+        }
+    </script>
+    <script>
+        @if (TempData["SuccessMessage"] != null)
+        {
+                <text>
+                    toastr.success("@TempData["SuccessMessage"]");
+                </text>
+        }
+    </script>
+}

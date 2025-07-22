@@ -1,0 +1,200 @@
+﻿@{
+    ViewData["Title"] = "Import Products";
+    ViewData["subTitle"] = "Product / Import Products";
+}
+
+<div class="grid grid-cols-12 gap-6">
+    <div class="col-span-12">
+        <div class="card border-0">
+            <div class="card-header">
+                <div class="flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                        <h4 class="mb-2">Import Products</h4>
+                        <p class="text-neutral-400 mb-0">Upload Excel file to bulk import products</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <a href="@Url.Action("DownloadTemplate", "Product")"
+                           class="btn bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-lg flex items-center gap-2">
+                            <iconify-icon icon="solar:download-outline"></iconify-icon>
+                            Download Template
+                        </a>
+                        <a asp-action="Index" asp-controller="Product"
+                           class="btn bg-neutral-500 hover:bg-neutral-600 text-white text-sm px-4 py-2 rounded-lg flex items-center gap-2">
+                            <iconify-icon icon="solar:arrow-left-outline"></iconify-icon>
+                            Back to Products
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-body">
+                <!-- Import Steps -->
+                <div class="mb-8">
+                    <div class="flex items-center justify-between relative">
+                        <div class="step-item active" data-step="1">
+                            <div class="step-circle">1</div>
+                            <div class="step-text">Upload File</div>
+                        </div>
+                        <div class="step-line"></div>
+                        <div class="step-item" data-step="2">
+                            <div class="step-circle">2</div>
+                            <div class="step-text">Validate Data</div>
+                        </div>
+                        <div class="step-line"></div>
+                        <div class="step-item" data-step="3">
+                            <div class="step-circle">3</div>
+                            <div class="step-text">Import Results</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 1: File Upload -->
+                <div id="step-upload" class="import-step active">
+                    <div class="max-w-2xl mx-auto">
+                        <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center">
+                            <div class="mb-4">
+                                <iconify-icon icon="solar:cloud-upload-outline" class="text-6xl text-gray-400"></iconify-icon>
+                            </div>
+                            <h6 class="mb-2">Choose Excel File to Upload</h6>
+                            <p class="text-gray-500 mb-4">Upload an Excel file (.xlsx) with product data</p>
+
+                            <form id="uploadForm" enctype="multipart/form-data">
+                                <input type="file" id="fileInput" name="file" accept=".xlsx" class="hidden">
+                                <button type="button" onclick="document.getElementById('fileInput').click()"
+                                        class="btn btn-primary px-6 py-3">
+                                    Select File
+                                </button>
+                            </form>
+
+                            <div id="file-info" class="mt-4 hidden">
+                                <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                                    <div class="flex items-center gap-3">
+                                        <iconify-icon icon="solar:document-outline" class="text-blue-600 text-2xl"></iconify-icon>
+                                        <div class="text-left">
+                                            <div class="font-medium text-blue-900 dark:text-blue-100" id="file-name"></div>
+                                            <div class="text-sm text-blue-600 dark:text-blue-300" id="file-size"></div>
+                                        </div>
+                                        <button type="button" onclick="clearFile()" class="ml-auto text-blue-600 hover:text-blue-800">
+                                            <iconify-icon icon="solar:close-circle-outline" class="text-xl"></iconify-icon>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="mt-4 flex gap-3">
+                                    <button type="button" onclick="validateFile()" class="btn btn-primary text-sm btn-sm px-3 py-3 rounded-lg flex items-center gap-2">
+                                        <iconify-icon icon="solar:check-circle-outline"></iconify-icon>
+                                        Validate File
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Instructions -->
+                        <div class="mt-6 bg-gray-50 dark:bg-gray-800 rounded-lg p-6">
+                            <h6 class="mb-3 flex items-center gap-2">
+                                <iconify-icon icon="solar:info-circle-outline" class="text-blue-600"></iconify-icon>
+                                Import Instructions
+                            </h6>
+                            <ul class="list-disc list-inside space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                                <li>Download the template file to see the required format</li>
+                                <li>Fill in all required fields: Client Code, Product Name, SKU</li>
+                                <li>Product SKUs must be unique within the client</li>
+                                <li>Weight should be in kilograms, dimensions in meters</li>
+                                <li>Stock levels should be positive numbers</li>
+                                <li>Use TRUE/FALSE for boolean fields (tracking requirements, status flags)</li>
+                                <li>Category and Sub-Category are optional but recommended for organization</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Validation Results -->
+                <div id="step-validation" class="import-step hidden">
+                    <div class="max-w-4xl mx-auto">
+                        <div id="validation-results">
+                            <!-- Validation results will be populated here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3: Import Results -->
+                <div id="step-results" class="import-step hidden">
+                    <div class="max-w-4xl mx-auto">
+                        <div id="import-results">
+                            <!-- Import results will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .step-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 1;
+            position: relative;
+        }
+
+        .step-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #e5e7eb;
+            color: #6b7280;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            margin-bottom: 8px;
+            transition: all 0.3s;
+        }
+
+        .step-item.active .step-circle {
+            background-color: #3b82f6;
+            color: white;
+        }
+
+        .step-item.completed .step-circle {
+            background-color: #10b981;
+            color: white;
+        }
+
+        .step-text {
+            font-size: 14px;
+            font-weight: 500;
+            color: #6b7280;
+        }
+
+        .step-item.active .step-text {
+            color: #3b82f6;
+        }
+
+        .step-item.completed .step-text {
+            color: #10b981;
+        }
+
+        .step-line {
+            flex: 1;
+            height: 2px;
+            background-color: #e5e7eb;
+            margin: 0 20px;
+            margin-top: -20px;
+        }
+
+        .import-step {
+            display: none;
+        }
+
+            .import-step.active {
+                display: block;
+            }
+    </style>
+}
+
+@section Scripts {
+    <script src="~/js/pages/products/import.js" asp-append-version="true"></script>
+}

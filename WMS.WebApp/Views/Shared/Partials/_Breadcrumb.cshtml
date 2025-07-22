@@ -1,0 +1,13 @@
+﻿<div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+    <h6 class="font-semibold mb-0 dark:text-white">@ViewBag.BreadcrumbTitle</h6>
+    <ul class="flex items-center gap-[6px]">
+        <li class="font-medium">
+            <a href="@Url.Action("Index", "Home")" class="flex items-center gap-2 hover:text-primary-600 dark:text-white">
+                <iconify-icon icon="solar:buildings-outline" class="icon text-lg"></iconify-icon>
+                WMS
+            </a>
+        </li>
+        <li class="dark:text-white">-</li>
+        <li class="font-medium dark:text-white">@ViewBag.BreadcrumbSubTitle</li>
+    </ul>
+</div>

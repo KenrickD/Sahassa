@@ -1,0 +1,200 @@
+﻿@model IEnumerable<WMS.Domain.DTOs.GIV_RawMaterial.RawMaterialDetailsDto>
+
+@{
+    ViewData["Title"] = "Raw Materials";
+    ViewData["subTitle"] = "Raw Material Inventory";
+}
+<head>
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+</head>
+
+@Html.AntiForgeryToken()
+
+<div class="grid grid-cols-12">
+    <div class="col-span-12">
+        <div class="card border-0 overflow-hidden">
+            <div class="card-header flex items-center justify-between">
+                <h6 class="card-title mb-0 text-lg">Raw Material Inventory</h6>
+
+                <div class="flex items-center gap-2">
+
+                    <div class="flex items-center mr-4">
+                        <label for="group-by-batch" class="mr-2 text-sm font-medium text-neutral-700 dark:text-white">Group by Batch</label>
+                        <div class="relative inline-block w-12 align-middle select-none">
+                            <input type="checkbox" name="group-by-batch" id="group-by-batch" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 border-neutral-300 appearance-none cursor-pointer transition-transform duration-200 ease-in" />
+                            <label for="group-by-batch" class="toggle-label block overflow-hidden h-6 rounded-full bg-neutral-300 cursor-pointer"></label>
+                        </div>
+                    </div>
+
+                    <!-- Sub-grouping options - only visible when "Group by Batch" is enabled -->
+                    <div id="sub-grouping-options" class="flex items-center mr-4" style="display: none;">
+                        <label for="batch-view-mode" class="mr-2 text-sm font-medium text-neutral-700 dark:text-white">View Level:</label>
+                        <select id="batch-view-mode" class="px-3 py-2 border border-neutral-300 rounded-lg text-sm bg-white dark:bg-neutral-800 dark:border-neutral-600 dark:text-white">
+                            <option value="pallet">By Pallet</option>
+                            <option value="item">By Item</option>
+                        </select>
+                    </div>
+                    <a id="export-excel-btn"
+                       class="btn btn-info text-sm btn-sm px-3 py-3 rounded-lg flex items-center gap-2">
+                        <iconify-icon icon="mdi:file-export-outline" class="icon text-xl line-height-1"></iconify-icon>
+                        Export to Excel
+                    </a>
+                    @if (ViewBag.HasWriteAccess == true)
+                    {
+                        <a asp-action="Import" asp-controller="RawMaterial"
+                           class="btn btn-primary text-sm btn-sm px-3 py-3 rounded-lg flex items-center gap-2">
+                            <iconify-icon icon="mdi:file-import-outline" class="icon text-xl line-height-1"></iconify-icon>
+                            Import Raw Materials
+                        </a>
+                        <a href="@Url.Action("JobReleases", "RawMaterial")"
+                           class="btn btn-warning text-sm btn-sm px-3 py-3 rounded-lg flex items-center gap-2">
+                            <iconify-icon icon="mdi:briefcase-outline" class="icon text-xl line-height-1"></iconify-icon>
+                            View Job Releases
+                        </a>
+                        <a asp-action="CreateRawMaterial" asp-controller="RawMaterial"
+                           class="btn btn-success text-sm btn-sm px-3 py-3 rounded-lg flex items-center gap-2">
+                            <iconify-icon icon="material-symbols:add-circle-outline" class="icon text-xl line-height-1"></iconify-icon>
+                            Add Raw Material
+                        </a>
+                    }
+                </div>
+            </div>
+            <div class="card-body">
+
+                <div id="grand-totals-panel" class="p-4 mb-4 bg-neutral-50 dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700">
+                    <div class="flex flex-wrap justify-between items-center">
+                        <h3 class="text-md font-semibold mb-2"></h3>
+                        <div class="flex gap-6">
+                            <div class="flex flex-col items-center">
+                                <span class="text-sm text-neutral-600 dark:text-neutral-400">Total Balance Pallets</span>
+                                <span id="grand-total-pallets" class="text-xl font-bold">0</span>
+                            </div>
+                            <div class="flex flex-col items-center">
+                                <span class="text-sm text-neutral-600 dark:text-neutral-400">Total Balance Quantity</span>
+                                <span id="grand-total-qty" class="text-xl font-bold">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <table id="raw-materials-table" class="border border-neutral-200 dark:border-neutral-600 rounded-lg border-separate">
+                    <thead id="table-header">
+                        <!-- Header will be dynamically updated based on view mode -->
+                    </thead>
+                    <tbody>
+                        <!-- Populated via DataTables -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+<style>
+    /* Toggle button styles */
+    .toggle-checkbox:checked {
+        transform: translateX(100%);
+        border-color: #48bb78;
+    }
+
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #48bb78;
+        }
+
+    #raw-materials-table th,
+    #raw-materials-table td {
+        text-align: left !important;
+    }
+
+    /* Autocomplete styles */
+    .custom-autocomplete {
+        background-color: #ffffff;
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        padding: 5px 0;
+        max-height: 300px;
+        overflow-y: auto;
+        z-index: 10000 !important;
+        width: 250px !important;
+        position: absolute !important;
+    }
+
+        .custom-autocomplete .ui-menu-item {
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        .custom-autocomplete .autocomplete-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .custom-autocomplete .ui-menu-item:hover .autocomplete-item,
+        .custom-autocomplete .ui-menu-item.ui-state-focus .autocomplete-item {
+            background-color: #f3f4f6;
+        }
+
+    /* Dark mode styles */
+    .dark .custom-autocomplete {
+        background-color: #1f2937;
+        border-color: #374151;
+    }
+
+        .dark .custom-autocomplete .autocomplete-item {
+            color: #f9fafb;
+        }
+
+        .dark .custom-autocomplete .ui-menu-item:hover .autocomplete-item,
+        .dark .custom-autocomplete .ui-menu-item.ui-state-focus .autocomplete-item {
+            background-color: #374151;
+        }
+
+    /* Additional styles to enhance the search input */
+    .dataTables_filter input {
+        width: 250px !important;
+        padding: 8px 12px !important;
+        border-radius: 4px !important;
+        transition: all 0.3s ease;
+    }
+
+        .dataTables_filter input:focus {
+            box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.3);
+            outline: none;
+        }
+
+    .dark .dataTables_filter input {
+        background-color: #1f2937;
+        border-color: #374151;
+        color: #f9fafb;
+    }
+
+    /* Fix z-index issues */
+    .dataTables_filter {
+        position: relative;
+        z-index: 10;
+    }
+
+    .ui-front {
+        z-index: 10000 !important;
+    }
+</style>
+@section Scripts {
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+    <script>
+        const successMessage = sessionStorage.getItem("successMessage");
+        if (successMessage) {
+            toastr.success(successMessage);
+            sessionStorage.removeItem("successMessage");
+        }
+    </script>
+    <script>
+        @if (TempData["SuccessMessage"] != null)
+        {
+                <text>
+                    toastr.success("@TempData["SuccessMessage"]");
+                </text>
+        }
+    </script>
+    <script src="~/js/pages/raw-material/list.js" asp-append-version="true"></script>
+}

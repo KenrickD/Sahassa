@@ -1,0 +1,277 @@
+﻿@using WMS.Domain.DTOs.GIV_FG_Receive
+@using WMS.Domain.DTOs.GIV_FG_ReceivePallet.PalletDto
+@using WMS.Domain.DTOs.GIV_FG_ReceivePallet.SkuDto
+@model (List<FG_ReceiveGroupDto> UnassignedGroups, List<SkuDto> Skus)
+@Html.AntiForgeryToken()
+
+<div class="container mt-4">
+    <div class="row mb-3">
+        <div class="col text-center">
+            <h3>Assign Pallets to SKU</h3>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col text-end">
+            <label for="skuDropdown" class="form-label fw-bold">Select SKU:</label>
+        </div>
+        <div class="col-6">
+            <select id="skuDropdown" class="form-select">
+                <option value="">-- Select SKU --</option>
+                @foreach (var sku in Model.Skus)
+                {
+                    <option value="@sku.Id">@sku.SKU</option>
+                }
+            </select>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <!-- Unassigned Pallets -->
+        <div class="col-md-5">
+            <div class="card h-100">
+                <div class="card-header text-bg-secondary">
+                    Unassigned Pallets
+                </div>
+                <div id="unassignedPallets" class="card-body border p-2"
+                     ondrop="drop(event, 'unassigned')" ondragover="allowDrop(event)">
+                    @foreach (var group in Model.UnassignedGroups)
+                    {
+                        <div class="receive-group mb-3"
+                             data-receive-id="@group.ReceiveId"
+                             draggable="true"
+                             ondragstart="dragGroup(event)">
+                            <div class="fw-bold">Receive Date: @group.ReceivedDate.ToString("yyyy-MM-dd")</div>
+                            <div class="ms-3">
+                                @foreach (var pallet in group.Pallets)
+                                {
+                                    <div class="pallet-item" data-id="@pallet.Id" data-receive-id="@group.ReceiveId">
+                                        @pallet.PalletCode
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Spacer -->
+        <div class="col-md-2 text-center d-flex align-items-center justify-content-center">
+            <i class="ri-arrow-left-right-line fs-1"></i>
+        </div>
+
+        <!-- Assigned Pallets -->
+        <div class="col-md-5">
+            <div class="card h-100">
+                <div class="card-header text-bg-primary">
+                    Assigned to SKU
+                </div>
+                <div id="assignedPallets" class="card-body border p-2"
+                     ondrop="drop(event, 'assigned')" ondragover="allowDrop(event)">
+                    <!-- Groups dynamically added via JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Save Button -->
+    <div class="row">
+        <div class="col text-center">
+            <button id="saveAssignmentBtn" class="btn btn-sm btn-primary">
+                Save Assignment
+            </button>
+        </div>
+    </div>
+    <!-- Receives Table -->
+    <div class="row mt-4">
+        <div class="col">
+            <h5>Receives for Selected SKU</h5>
+            <table class="table table-bordered" id="receivesTable">
+                <thead>
+                    <tr>
+                        <th>Received Date</th>
+                        <th>Pack Size</th>
+                        <th>Qty</th>
+                        <th>Plt</th>
+                        <th>Bal of Qty</th>
+                        <th>Bal of Plt</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+
+<script>
+    let selectedSkuId = null;
+
+    document.addEventListener('DOMContentLoaded', function () {
+        document.getElementById('skuDropdown').addEventListener('change', function () {
+            selectedSkuId = this.value;
+            if (selectedSkuId) {
+                loadAssignedPallets(selectedSkuId);
+                loadReceivesTable(selectedSkuId);
+            } else {
+                clearAssignedPallets();
+                clearReceivesTable();
+            }
+        });
+
+        document.getElementById('saveAssignmentBtn').addEventListener('click', saveAssignments);
+    });
+
+    function allowDrop(event) {
+        event.preventDefault();
+    }
+
+    function dragGroup(event) {
+        const group = event.currentTarget;
+        const receiveId = group.getAttribute('data-receive-id');
+        event.dataTransfer.setData('receiveId', receiveId);
+    }
+
+    function drop(event, target) {
+        event.preventDefault();
+        const receiveId = event.dataTransfer.getData('receiveId');
+        if (!receiveId) return;
+
+        const allGroups = document.querySelectorAll(`.receive-group[data-receive-id='${receiveId}']`);
+        const targetBox = (target === 'assigned')
+            ? document.getElementById('assignedPallets')
+            : document.getElementById('unassignedPallets');
+
+        allGroups.forEach(group => targetBox.appendChild(group));
+    }
+
+        function saveAssignments() {
+        if (!selectedSkuId) {
+            toastr.warning('Please select a SKU first.');
+            return;
+        }
+
+        const assignedBox = document.getElementById('assignedPallets');
+        const unassignedBox = document.getElementById('unassignedPallets');
+
+        const assignedPalletIds = Array.from(assignedBox.querySelectorAll('.pallet-item'))
+            .map(p => p.getAttribute('data-id'));
+
+        const unassignedReceiveIds = Array.from(unassignedBox.querySelectorAll('.receive-group'))
+            .map(g => g.getAttribute('data-receive-id'));
+
+        fetch('/FinishedGood/AssignPalletsToSku', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+            },
+            body: JSON.stringify({
+                skuId: selectedSkuId,
+                palletIds: assignedPalletIds,
+                unassignedReceiveIds: unassignedReceiveIds 
+            })
+        })
+        .then(async response => {
+            const result = await response.json();
+            if (response.ok && result.success) {
+                toastr.success('Pallets assigned successfully!');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                toastr.error(result.error || 'Unexpected error. Please try again.');
+            }
+        })
+        .catch(() => {
+            toastr.error('Unexpected error. Please try again.');
+        });
+    }
+
+
+    function loadAssignedPallets(skuId) {
+        fetch(`/FinishedGood/GetPalletsBySku?SkuId=${skuId}`)
+            .then(response => response.json())
+            .then(data => {
+                const container = document.getElementById('assignedPallets');
+                container.innerHTML = '';
+                    data.forEach(group => {
+        container.appendChild(createGroupElement(group));
+    });
+
+            });
+    }
+
+    function groupPalletsByReceive(pallets) {
+        const map = {};
+        pallets.forEach(p => {
+            if (!map[p.receiveId]) map[p.receiveId] = [];
+            map[p.receiveId].push(p);
+        });
+        return Object.entries(map).map(([receiveId, pallets]) => ({
+            receiveId,
+            receivedDate: pallets[0].receivedDate, // assuming it's added to the DTO
+            pallets
+        }));
+    }
+
+    function createGroupElement(group) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'receive-group mb-3';
+        wrapper.setAttribute('draggable', 'true');
+        wrapper.setAttribute('data-receive-id', group.receiveId);
+        wrapper.setAttribute('ondragstart', 'dragGroup(event)');
+
+        const header = document.createElement('div');
+        header.className = 'fw-bold';
+        header.textContent = `Receive Date: ${new Date(group.receivedDate).toLocaleDateString()}`;
+        wrapper.appendChild(header);
+
+        const palletBox = document.createElement('div');
+        palletBox.className = 'ms-3';
+            group.pallets.forEach(pallet => {
+        const div = document.createElement('div');
+        div.className = 'pallet-item';
+        div.setAttribute('data-id', pallet.id || pallet.Id); 
+        div.setAttribute('data-receive-id', group.receiveId || group.ReceiveId);
+        div.textContent = pallet.palletCode || pallet.PalletCode;
+        palletBox.appendChild(div);
+    });
+
+
+        wrapper.appendChild(palletBox);
+        return wrapper;
+    }
+
+    function clearAssignedPallets() {
+        document.getElementById('assignedPallets').innerHTML = '';
+    }
+
+    function loadReceivesTable(skuId) {
+        fetch(`/FinishedGood/GetReceivesBySku?skuId=${skuId}`)
+            .then(response => response.json())
+            .then(data => {
+                const tbody = document.querySelector('#receivesTable tbody');
+                tbody.innerHTML = '';
+
+                data.forEach(row => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${new Date(row.receivedDate).toLocaleDateString()}</td>
+                        <td>${row.packSize}</td>
+                        <td>${row.qty}</td>
+                        <td>${row.plt}</td>
+                        <td>${row.qty} / ${row.balQty}</td>
+                        <td>${row.plt} / ${row.balPlt}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            });
+    }
+
+    function clearReceivesTable() {
+        document.querySelector('#receivesTable tbody').innerHTML = '';
+    }
+</script>
+

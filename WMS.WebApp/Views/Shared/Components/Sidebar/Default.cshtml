@@ -1,0 +1,258 @@
+﻿@model WMS.Domain.DTOs.Users.UserDto
+@{
+    bool hasUserAccess = (Model.Permissions.Contains("User.Write") || Model.Permissions.Contains("User.Read"));
+    bool hasRoleAccess = (Model.Permissions.Contains("Role.Write") || Model.Permissions.Contains("Role.Read"));
+    bool hasWarehouseAccess = (Model.Permissions.Contains("Warehouse.Write") || Model.Permissions.Contains("Warehouse.Read"));
+    bool hasClientAccess = (Model.Permissions.Contains("Client.Write") || Model.Permissions.Contains("Client.Read"));
+    bool hasZoneAccess = (Model.Permissions.Contains("Zone.Write") || Model.Permissions.Contains("Zone.Read"));
+    bool hasLocationAccess = (Model.Permissions.Contains("Location.Write") || Model.Permissions.Contains("Location.Read"));
+    bool hasProductAccess = (Model.Permissions.Contains("Product.Write") || Model.Permissions.Contains("Product.Read"));
+    bool hasInventoryAccess = (Model.Permissions.Contains("Inventory.Write") || Model.Permissions.Contains("Inventory.Read"));
+    bool hasGeneralCodeTypeAccess = (Model.Permissions.Contains("GeneralCodeType.Write") || Model.Permissions.Contains("GeneralCodeType.Read"));
+    bool hasGeneralCodeAccess = (Model.Permissions.Contains("GeneralCode.Write") || Model.Permissions.Contains("GeneralCode.Read"));
+    bool hasRawMaterialAccess = (Model.Permissions.Contains("RawMaterial.Write") || Model.Permissions.Contains("RawMaterial.Read"));
+    bool hasFinishedGoodAccess = (Model.Permissions.Contains("FinishedGoods.Write") || Model.Permissions.Contains("FinishedGoods.Read"));
+    bool hasFinishedGoodUnassignedAccess = (Model.Permissions.Contains("FinishedGoods.Write"));
+    bool hasContainerAccess = (Model.Permissions.Contains("Container.Read"));
+    bool hasLocDashboardAccess = (Model.Permissions.Contains("LocationGridDashboard.Read"));
+
+    if (Model.IsSystemAdmin)
+    {
+        hasUserAccess = hasRoleAccess = hasWarehouseAccess = hasClientAccess = hasZoneAccess = hasLocationAccess
+        = hasProductAccess = hasRawMaterialAccess = hasFinishedGoodAccess = hasFinishedGoodUnassignedAccess = hasContainerAccess
+        = hasGeneralCodeAccess = hasGeneralCodeTypeAccess = hasLocDashboardAccess = true;
+    }
+}
+
+<aside class="sidebar">
+    <button type="button" class="sidebar-close-btn !mt-4">
+        <iconify-icon icon="radix-icons:cross-2"></iconify-icon>
+    </button>
+    <div>
+        <a asp-action="Index" asp-controller="Home" class="sidebar-logo">
+            <img src="~/images/HSC_Logo.png" alt="site logo" class="light-logo">
+            <img src="~/images/HSC_Logo.png" alt="site logo" class="dark-logo">
+            <img src="~/images/HSCIcon.png" alt="site logo" class="logo-icon">
+        </a>
+    </div>
+    <div class="sidebar-menu-area">
+        <ul class="sidebar-menu" id="sidebar-menu">
+            <li class="sidebar-menu-group-title">WMS</li>
+
+            @if (hasLocDashboardAccess)
+            {
+                <li class="dropdown">
+                    <a href="javascript:void(0)" data-toggle="submenu">
+                        <iconify-icon icon="solar:home-smile-angle-outline" class="menu-icon"></iconify-icon>
+                        <span>Dashboard</span>
+                    </a>
+                    <ul class="sidebar-submenu">
+                        @* <li><a asp-action="Index" asp-controller="Home"><i class="ri-circle-fill circle-icon text-primary-600 w-auto"></i> WMS</a></li> *@
+                        @if (hasLocDashboardAccess)
+                        {
+                            <li><a asp-action="Index" asp-controller="LocationGrid"><i class="ri-circle-fill circle-icon text-primary-600 w-auto"></i> Location</a></li>
+                        }
+                    </ul>
+                </li>
+            }
+
+            @if (hasProductAccess || hasInventoryAccess)
+            {
+                <li class="dropdown">
+                    <a href="javascript:void(0)" data-toggle="submenu">
+                        <iconify-icon icon="solar:box-outline" class="menu-icon"></iconify-icon>
+                        <span>Inventory</span>
+                    </a>
+                    <ul class="sidebar-submenu">
+                        @if (hasProductAccess)
+                        {
+                            <li>
+                                <a asp-action="Index" asp-controller="Product"><i class="ri-circle-fill circle-icon text-primary-600 w-auto"></i> Products</a>
+                            </li>
+                        }
+                    </ul>
+                </li>
+            }
+            @if (hasFinishedGoodAccess || hasRawMaterialAccess)
+            {
+                <li class="dropdown">
+                    <a href="javascript:void(0)" data-toggle="submenu" class="flex items-center gap-2">
+                        <img src="~/images/nav/givaudan logo.svg" alt="Givaudan" style="width: 20px; height: 20px;" />
+                        <span>Givaudan</span>
+                    </a>
+                    <ul class="sidebar-submenu">
+                        @if (hasContainerAccess)
+                        {
+                            <li>
+                                <a asp-action="Datatable" asp-controller="Container" class="flex items-center gap-2">
+                                    <iconify-icon icon="mdi:package-variant-closed" class="menu-icon"></iconify-icon>
+                                    <span>Container</span>
+                                </a>
+                            </li>
+                        }
+                        @if (hasRawMaterialAccess)
+                        {
+                            <li>
+                                <a asp-action="Datatable" asp-controller="RawMaterial" class="flex items-center gap-2">
+                                    <iconify-icon icon="ri:archive-line" class="menu-icon"></iconify-icon>
+                                    <span>Raw Material</span>
+                                </a>
+                            </li>
+                        }
+                        @if (hasFinishedGoodAccess)
+                        {
+                            <li>
+                                <a asp-action="Datatable" asp-controller="FinishedGood" class="flex items-center gap-2">
+                                    <iconify-icon icon="ri:dropbox-line" class="menu-icon"></iconify-icon>
+                                    <span>Finished Good</span>
+                                </a>
+                            </li>
+                            @if (hasFinishedGoodUnassignedAccess)
+                            {
+                                <li>
+                                    <a asp-action="Unassigned" asp-controller="FinishedGood" class="flex items-center gap-2 pl-6">
+                                        <iconify-icon icon="ri:question-line" class="menu-icon"></iconify-icon>
+                                        <span>Unassigned</span>
+                                    </a>
+                                </li>
+                            }
+
+                        }
+
+                    </ul>
+                </li>
+                <li class="dropdown">
+                    <a href="javascript:void(0)" data-toggle="submenu">
+                        <iconify-icon icon="mdi:chart-box-outline" class="menu-icon"></iconify-icon>
+                        <span>Report</span>
+                    </a>
+                    <ul class="sidebar-submenu">
+                        <li class="dropdown">
+                            <a href="javascript:void(0)" data-toggle="submenu">
+                                <iconify-icon icon="mdi:factory" class="menu-icon"></iconify-icon>
+                                <span>Givaudan</span>
+                            </a>
+                            <ul class="sidebar-submenu">
+                                @if (hasRawMaterialAccess)
+                                {
+                                    <li class="sidebar-menu-group-title">Raw Material</li>
+                                    <li><a asp-action="Report" asp-controller="RawMaterial"><i class="ri-circle-fill circle-icon text-primary-600 w-auto"></i> Export</a></li>
+                                }
+
+                                @if (hasFinishedGoodAccess)
+                                {
+                                    <li class="sidebar-menu-group-title mt-2">Finished Good</li>
+                                    <li><a asp-action="Report" asp-controller="FinishedGood"><i class="ri-circle-fill circle-icon text-primary-600 w-auto"></i> Export</a></li>
+                                }
+
+                            </ul>
+                        </li>
+                    </ul>
+                </li>
+            }
+            @if (hasWarehouseAccess || hasClientAccess || hasZoneAccess || hasLocationAccess || hasGeneralCodeTypeAccess || hasGeneralCodeAccess)
+            {
+                <li class="dropdown">
+                    <a href="javascript:void(0)" data-toggle="submenu">
+                        <iconify-icon icon="icon-park-outline:setting-two" class="menu-icon"></iconify-icon>
+                        <span>Configuration</span>
+                    </a>
+                    <ul class="sidebar-submenu">
+                        @if (hasWarehouseAccess)
+                        {
+                            <li><a asp-action="Index" asp-controller="Warehouse"><i class="ri-circle-fill circle-icon text-primary-600 w-auto"></i> Warehouses</a></li>
+                        }
+                        @if (hasClientAccess)
+                        {
+                            <li><a asp-action="Index" asp-controller="Client"><i class="ri-circle-fill circle-icon text-primary-600 w-auto"></i> Clients</a></li>
+                        }
+                        @if (hasZoneAccess)
+                        {
+                            <li><a asp-action="Index" asp-controller="Zone"><i class="ri-circle-fill circle-icon text-primary-600 w-auto"></i> Zones</a></li>
+                        }
+                        @if (hasLocationAccess)
+                        {
+                            <li><a asp-action="Index" asp-controller="Location"><i class="ri-circle-fill circle-icon text-primary-600 w-auto"></i> Locations</a></li>
+                        }
+                        @if (hasGeneralCodeAccess || hasGeneralCodeTypeAccess)
+                        {
+                            <li><a asp-action="Index" asp-controller="GeneralCode"><i class="ri-circle-fill circle-icon text-primary-600 w-auto"></i> General Codes</a></li>
+                        }
+                    </ul>
+                </li>
+            }
+
+            @if (hasRoleAccess || hasUserAccess)
+            {
+                <li class="dropdown">
+                    <a href="javascript:void(0)" data-toggle="submenu">
+                        <iconify-icon icon="flowbite:users-group-outline" class="menu-icon"></iconify-icon>
+                        <span>User & Role</span>
+                    </a>
+                    <ul class="sidebar-submenu">
+                        @if (hasUserAccess)
+                        {
+                            <li><a asp-action="Index" asp-controller="User"><i class="ri-circle-fill circle-icon text-primary-600 w-auto"></i> Users</a></li>
+                        }
+                        @if (hasRoleAccess)
+                        {
+                            <li><a asp-action="Index" asp-controller="Role"><i class="ri-circle-fill circle-icon text-primary-600 w-auto"></i> Roles</a></li>
+                        }
+                    </ul>
+                </li>
+            }
+
+
+        </ul>
+    </div>
+</aside>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const toggles = document.querySelectorAll('[data-toggle="submenu"]');
+
+        toggles.forEach(toggle => {
+            toggle.addEventListener("click", function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const parent = this.closest("li.dropdown");
+                const submenu = Array.from(parent.children).find(child =>
+                    child.classList?.contains("sidebar-submenu")
+                );
+
+                if (submenu) {
+                    submenu.classList.toggle("open");
+                    parent.classList.toggle("active");
+                }
+            });
+        });
+    });
+</script>
+
+<style>
+    .sidebar-submenu {
+        display: none;
+        transition: all 0.3s ease;
+    }
+
+        .sidebar-submenu.open {
+            display: block;
+        }
+
+    .dropdown.active > a {
+        font-weight: bold;
+    }
+
+    .sidebar-menu-group-title {
+        font-weight: 600;
+        padding: 6px 16px;
+        font-size: 13px;
+        color: #666;
+        text-transform: uppercase;
+    }
+
+        .sidebar-menu-group-title.mt-2 {
+            margin-top: 1rem;
+        }
+</style>

@@ -1,0 +1,97 @@
+﻿@{
+    ViewData["Title"] = "Raw Material Report";
+}
+
+<h2 class="mb-4">Raw Material Report</h2>
+
+<form asp-action="GenerateReport" asp-controller="RawMaterial" method="post">
+    @Html.AntiForgeryToken()
+
+    <div class="mb-3">
+        <label class="form-label fw-semibold">Report Mode</label>
+        <div class="form-check">
+            <input class="form-check-input" type="radio" name="ReportMode" id="weekly" value="Weekly" checked />
+            <label class="form-check-label" for="weekly">Weekly</label>
+        </div>
+        <div class="form-check">
+            <input class="form-check-input" type="radio" name="ReportMode" id="monthly" value="Monthly" />
+            <label class="form-check-label" for="monthly">Monthly</label>
+        </div>
+    </div>
+
+    <div id="weekly-options" class="mb-3">
+        <label for="CutoffDate" class="form-label fw-semibold">Cutoff Date</label>
+        <input type="date" class="form-control" name="CutoffDate" id="CutoffDate" required />
+    </div>
+
+    <div id="monthly-options" class="mb-3" style="display: none;">
+        <label for="StartMonth" class="form-label fw-semibold">Start Month</label>
+        <input type="date" class="form-control mb-2" name="StartMonth" id="StartMonth" />
+
+        <label for="EndMonth" class="form-label fw-semibold">End Month</label>
+        <input type="date" class="form-control" name="EndMonth" id="EndMonth" />
+    </div>
+
+    <button type="submit" class="btn btn-primary mt-3">
+        <iconify-icon icon="mdi:file-excel" class="me-1"></iconify-icon> Generate Excel
+    </button>
+</form>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const weeklyRadio = document.getElementById("weekly");
+            const monthlyRadio = document.getElementById("monthly");
+
+            const weeklyOptions = document.getElementById("weekly-options");
+            const monthlyOptions = document.getElementById("monthly-options");
+
+            const cutoffInput = document.getElementById("CutoffDate");
+            const startMonthInput = document.getElementById("StartMonth");
+            const endMonthInput = document.getElementById("EndMonth");
+
+            function toggleOptions() {
+                if (weeklyRadio.checked) {
+                    weeklyOptions.style.display = "block";
+                    monthlyOptions.style.display = "none";
+
+                    cutoffInput.required = true;
+                    startMonthInput.required = false;
+                    endMonthInput.required = false;
+                } else {
+                    weeklyOptions.style.display = "none";
+                    monthlyOptions.style.display = "block";
+
+                    cutoffInput.required = false;
+                    startMonthInput.required = true;
+                    endMonthInput.required = true;
+                }
+            }
+
+            weeklyRadio.addEventListener("change", toggleOptions);
+            monthlyRadio.addEventListener("change", toggleOptions);
+
+            toggleOptions(); 
+            const form = document.querySelector("form");
+            form.addEventListener("submit", function (e) {
+                if (monthlyRadio.checked) {
+                    const start = new Date(startMonthInput.value);
+                    const end = new Date(endMonthInput.value);
+
+                    const diffMonths = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+
+                    if (diffMonths !== 1 || start > end) {
+                        e.preventDefault();
+
+                        if (typeof toastr !== 'undefined') {
+                            toastr.error("For Monthly reports, the date range must be exactly one month.");
+                        } else {
+                            alert("For Monthly reports, the date range must be exactly one month.");
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+}
+

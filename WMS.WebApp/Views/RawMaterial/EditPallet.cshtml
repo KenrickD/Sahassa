@@ -1,0 +1,78 @@
+﻿@model WMS.Domain.DTOs.GIV_RM_ReceivePallet.RM_ReceivePalletEditDto
+@using WMS.Domain.DTOs.Locations
+@{
+    ViewData["Title"] = "Edit Pallet";
+}
+
+<h2>Edit Pallet @Model.Id</h2>
+
+
+<form id="edit-pallet-form"
+      asp-action="EditPallet"
+      method="post"
+      novalidate>
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+    <input asp-for="Id" type="hidden" />
+    <input asp-for="ReceiveId" type="hidden" />
+
+    <div class="form-group mb-2">
+        <label asp-for="PalletCode" class="control-label"></label>
+        <input asp-for="PalletCode" class="form-control" />
+        <span asp-validation-for="PalletCode" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mb-2">
+        <label asp-for="HandledBy" class="control-label"></label>
+        <input asp-for="HandledBy" class="form-control" />
+        <span asp-validation-for="HandledBy" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mb-2">
+        <label asp-for="StoredBy" class="control-label"></label>
+        <input asp-for="StoredBy" class="form-control" />
+        <span asp-validation-for="StoredBy" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mb-2">
+        <label asp-for="PackSize" class="control-label"></label>
+        <input asp-for="PackSize" type="number" class="form-control" />
+        <span asp-validation-for="PackSize" class="text-danger"></span>
+    </div>
+
+   @*  <div class="form-group mb-2">
+    <label for="LocationId" class="control-label">Location</label>
+    <select name="LocationId" id="LocationId" class="form-control">
+        <option value="">-- Select Location --</option>
+        @if (ViewBag.Locations is List<LocationDto> locations)
+        {
+            foreach (var loc in locations)
+            {
+                var isSelected = Model.LocationId != Guid.Empty && Model.LocationId == loc.Id
+                    ? "selected"
+                    : "";
+                @: <option value="@loc.Id" @isSelected>@loc.Barcode</option>
+            }
+        }
+    </select>
+    <span asp-validation-for="LocationId" class="text-danger"></span>
+</div> *@
+
+    <div class="form-check mb-3">
+        <input asp-for="IsReleased" class="form-check-input" />
+        <label asp-for="IsReleased" class="form-check-label"></label>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save</button>
+    <a asp-action="Pallets"
+       asp-route-receiveId="@Model.ReceiveId"
+       class="btn btn-secondary ms-2">
+        Cancel
+    </a>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <script src="~/js/pages/raw-material/edit-pallet.js" asp-append-version="true"></script>
+}

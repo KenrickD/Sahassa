@@ -1,0 +1,38 @@
+﻿@model WMS.Domain.DTOs.GIV_RawMaterial.RawMaterialEditDto
+
+@{
+    ViewData["Title"] = "Edit Raw Material";
+}
+
+
+<form asp-action="Edit" method="post">
+    <input type="hidden" asp-for="Id" />
+    @Html.AntiForgeryToken()
+
+    <div class="mb-3">
+        <label asp-for="MaterialNo" class="form-label"></label>
+        <input asp-for="MaterialNo" class="form-control" />
+        <span asp-validation-for="MaterialNo" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Description" class="form-label"></label>
+        <input asp-for="Description" class="form-control" />
+        <span asp-validation-for="Description" class="text-danger"></span>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save</button>
+    <a asp-action="DataTable" class="btn btn-secondary">Cancel</a>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        @if (TempData["ErrorMessage"] != null)
+        {
+                <text>
+                    toastr.error("@TempData["ErrorMessage"]");
+                </text>
+        }
+    </script>
+}

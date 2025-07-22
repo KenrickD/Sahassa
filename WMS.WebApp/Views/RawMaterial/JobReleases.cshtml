@@ -1,0 +1,341 @@
+﻿@{
+    ViewData["Title"] = "Job Releases";
+}
+@Html.AntiForgeryToken()
+
+<div class="card p-3 mb-4">
+    <div class="flex justify-between items-center">
+        <div>
+            <h4>Raw Material Job Releases</h4>
+            <p>Multi-material release jobs grouped by Job ID</p>
+        </div>
+        <div class="flex gap-2">
+            <a href="@Url.Action("CreateJobRelease")" class="btn btn-success">
+                <iconify-icon icon="lucide:plus-circle"></iconify-icon>
+                Create Job Release
+            </a>
+            <a href="@Url.Action("Datatable")" class="btn btn-secondary">
+                <iconify-icon icon="lucide:arrow-left"></iconify-icon>
+                Back to Raw Materials
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="flex justify-between items-center">
+            <h5 class="card-title">Job Release History</h5>
+            <div class="text-sm text-gray-600 dark:text-gray-400">
+                <iconify-icon icon="lucide:info" class="mr-1"></iconify-icon>
+                <span class="hidden md:inline">Search by job ID, material numbers, release dates, or usernames</span>
+                <span class="md:hidden">Advanced search available</span>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        <table id="job-releases-table" class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Job ID</th>
+                    <th>Planned Release Date</th>
+                    <th>Created By</th>
+                    <th>Material Count</th>
+                    <th>Total Pallets</th>
+                    <th>Total Items</th>
+                    <th>Job Status</th>
+                    <th>Completion %</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Populated via DataTables -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Status color legend -->
+<div class="mt-4">
+    <div class="flex flex-wrap gap-4 text-sm">
+        <div class="flex items-center gap-2">
+            <span class="w-3 h-3 bg-blue-500 rounded-full"></span>
+            <span>Scheduled</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="w-3 h-3 bg-yellow-500 rounded-full"></span>
+            <span>In Progress</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="w-3 h-3 bg-green-500 rounded-full"></span>
+            <span>Completed</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="w-3 h-3 bg-red-500 rounded-full"></span>
+            <span>Overdue</span>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Progress bar styles */
+    .progress {
+        height: 20px;
+        background-color: #f3f4f6;
+        border-radius: 10px;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #3b82f6 0%, #10b981 100%);
+        transition: width 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    /* Status badge styles */
+    .status-scheduled {
+        background-color: #dbeafe;
+        color: #1e40af;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .status-in-progress {
+        background-color: #fef3c7;
+        color: #92400e;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .status-completed {
+        background-color: #d1fae5;
+        color: #065f46;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .status-overdue {
+        background-color: #fee2e2;
+        color: #991b1b;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    /* Dark mode adjustments */
+    .dark .status-scheduled {
+        background-color: rgba(59, 130, 246, 0.2);
+        color: #93c5fd;
+    }
+
+    .dark .status-in-progress {
+        background-color: rgba(245, 158, 11, 0.2);
+        color: #fbbf24;
+    }
+
+    .dark .status-completed {
+        background-color: rgba(16, 185, 129, 0.2);
+        color: #6ee7b7;
+    }
+
+    .dark .status-overdue {
+        background-color: rgba(239, 68, 68, 0.2);
+        color: #fca5a5;
+    }
+
+    .dark .progress {
+        background-color: #374151;
+    }
+
+    .dark .table {
+        color: #e5e7eb;
+    }
+
+    .dark .card {
+        background-color: #1f2937;
+        border-color: #374151;
+    }
+
+    .dark .card-header {
+        background-color: #111827;
+        border-color: #374151;
+    }
+
+    /* DataTables dark mode */
+    .dark .dataTables_wrapper .dataTables_filter input,
+    .dark .dataTables_wrapper .dataTables_length select {
+        background-color: #374151;
+        border-color: #4b5563;
+        color: white;
+    }
+
+    .dark .dataTables_wrapper .dataTables_info,
+    .dark .dataTables_wrapper .dataTables_paginate {
+        color: #e5e7eb;
+    }
+</style>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            initJobReleasesTable();
+        });
+
+        function initJobReleasesTable() {
+            const token = $('input[name="__RequestVerificationToken"]').val();
+
+            // Check if dark mode is active
+            const isDarkMode = document.documentElement.classList.contains('dark') ||
+                document.body.classList.contains('dark');
+
+            $('#job-releases-table').DataTable({
+                processing: true,
+                serverSide: true,
+                ajax: {
+                    url: '/RawMaterial/GetPaginatedJobReleases',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    headers: {
+                        'X-CSRF-TOKEN': token
+                    },
+                    data: function(d) {
+                        return JSON.stringify(d);
+                    }
+                },
+                columns: [
+                    {
+                        data: 'jobId',
+                        render: function(data, type, row) {
+                            // Show first 8 characters of JobId
+                            const shortId = data.substring(0, 8).toUpperCase();
+                            return `<span class="font-mono text-sm" title="${data}">${shortId}...</span>`;
+                        }
+                    },
+                    {
+                        data: 'plannedReleaseDate',
+                        render: function(data, type, row) {
+                            const date = new Date(data);
+                            return date.toLocaleDateString();
+                        }
+                    },
+                    {
+                        data: 'createdByFullName',
+                        render: function(data, type, row) {
+                            return data || row.createdBy || '-';
+                        }
+                    },
+                    {
+                        data: 'materialCount',
+                        className: 'text-center'
+                    },
+                    {
+                        data: 'totalPallets',
+                        className: 'text-center'
+                    },
+                    {
+                        data: 'totalItems',
+                        className: 'text-center'
+                    },
+                    {
+                        data: 'jobStatus',
+                        render: function(data, type, row) {
+                            const statusClass = getJobStatusClass(data);
+                            return `<span class="${statusClass}">${data}</span>`;
+                        }
+                    },
+                    {
+                        data: 'completionPercentage',
+                        render: function(data, type, row) {
+                            const percentage = Math.round(data);
+                            return `
+                                <div class="progress">
+                                    <div class="progress-bar" style="width: ${percentage}%">
+                                        ${percentage}%
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    },
+                    {
+                        data: null,
+                        orderable: false,
+                        searchable: false,
+                        render: function(data, type, row) {
+                            return `
+                                <button class="btn btn-sm btn-primary" onclick="viewJobReleaseDetails('${row.jobId}')">
+                                    <iconify-icon icon="lucide:eye"></iconify-icon>
+                                    Details
+                                </button>
+                            `;
+                        }
+                    }
+                ],
+                order: [[1, 'desc']], // Order by planned release date descending
+                dom: '<"flex justify-between items-center mb-4"<"flex"f><"flex-1 text-right"l>>rt<"flex justify-between items-center mt-4"<"flex-1"i><"flex"p>>',
+                language: {
+                    search: "",
+                    searchPlaceholder: "Search job releases...",
+                    lengthMenu: "_MENU_ per page",
+                    info: "Showing _START_ to _END_ of _TOTAL_ job releases",
+                    paginate: {
+                        first: '<iconify-icon icon="heroicons-outline:chevron-double-left"></iconify-icon>',
+                        last: '<iconify-icon icon="heroicons-outline:chevron-double-right"></iconify-icon>',
+                        next: '<iconify-icon icon="heroicons-outline:chevron-right"></iconify-icon>',
+                        previous: '<iconify-icon icon="heroicons-outline:chevron-left"></iconify-icon>'
+                    },
+                    zeroRecords: "No job releases found",
+                    emptyTable: "No job release data available"
+                },
+                initComplete: function() {
+                    if (isDarkMode) {
+                        $('.dataTables_filter input').addClass('bg-gray-700 border-gray-600 text-white');
+                        $('.dataTables_length select').addClass('bg-gray-700 border-gray-600 text-white');
+                        $(this).closest('.dataTables_wrapper').addClass('dark-mode-table');
+                    }
+                }
+            });
+        }
+
+        function getJobStatusClass(status) {
+            switch (status.toLowerCase()) {
+                case 'scheduled':
+                    return 'status-scheduled';
+                case 'in progress':
+                    return 'status-in-progress';
+                case 'completed':
+                    return 'status-completed';
+                case 'overdue':
+                    return 'status-overdue';
+                default:
+                    return 'status-scheduled';
+            }
+        }
+
+        function viewJobReleaseDetails(jobId) {
+            window.location.href = `/RawMaterial/JobReleaseDetails/${jobId}`;
+        }
+
+        // Show success message if redirected from job creation
+        $(document).ready(function() {
+            const successMessage = sessionStorage.getItem("jobReleaseSuccessMessage");
+            if (successMessage) {
+                toastr.success(successMessage);
+                sessionStorage.removeItem("jobReleaseSuccessMessage");
+            }
+        });
+    </script>
+}

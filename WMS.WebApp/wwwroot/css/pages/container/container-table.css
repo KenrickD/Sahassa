@@ -1,0 +1,262 @@
+﻿#containerPalletsModal .h-\[67vh\] {
+    height: 67vh !important;
+    max-height: 67vh !important;
+}
+
+/* CRITICAL: Ensure table scrolling works properly */
+#containerPalletsModal .overflow-auto {
+    overflow: auto !important;
+}
+
+/* CRITICAL: Prevent table from growing beyond container */
+#containerPalletsModal table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+/* CRITICAL: Make sure flex layout works */
+#containerPalletsModal .flex-1 {
+    flex: 1 1 0% !important;
+}
+
+#containerPalletsModal .min-h-0 {
+    min-height: 0 !important;
+}
+
+#containerPalletsModal .flex-shrink-0 {
+    flex-shrink: 0 !important;
+}
+
+/* Enhanced scrollbar styling */
+#containerPalletsModal .overflow-auto::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+#containerPalletsModal .overflow-auto::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 6px;
+}
+
+#containerPalletsModal .overflow-auto::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 6px;
+    border: 2px solid #f1f5f9;
+}
+
+    #containerPalletsModal .overflow-auto::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+
+/* Dark mode scrollbar */
+.dark #containerPalletsModal .overflow-auto::-webkit-scrollbar-track {
+    background: #374151;
+}
+
+.dark #containerPalletsModal .overflow-auto::-webkit-scrollbar-thumb {
+    background: #4b5563;
+    border-color: #374151;
+}
+
+    .dark #containerPalletsModal .overflow-auto::-webkit-scrollbar-thumb:hover {
+        background: #6b7280;
+    }
+
+/* Ensure sticky header works */
+#containerPalletsModal thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: inherit;
+}
+
+/* Mobile responsive fixes */
+@media (max-width: 640px) {
+    #containerPalletsModal .h-\[67vh\] {
+        height: 90vh !important;
+        max-height: 90vh !important;
+    }
+
+    #containerPalletsModal .max-w-7xl {
+        max-width: 95vw;
+        margin: 0.5rem;
+    }
+
+    #containerPalletsModal .p-6 {
+        padding: 1rem;
+    }
+
+    #containerPalletsModal .sm\\:w-80 {
+        width: 100%;
+    }
+
+    #containerPalletsModal table {
+        font-size: 0.875rem;
+    }
+}
+
+/* Debug helper - remove in production */
+#containerPalletsModal .debug {
+    border: 2px solid red !important;
+}
+
+/* Center-align table data to match headers */
+#containerPalletsModal tbody td {
+    text-align: center !important;
+}
+
+    /* Exception: Keep MHU (first column) and Details column left-aligned for readability */
+/*#containerPalletsModal tbody td:first-child,
+#containerPalletsModal tbody td:nth-child(5) {
+    text-align: left !important;
+}
+*/
+/*        Ensure buttons in Details and Actions columns are properly centered */
+#containerPalletsModal tbody td:nth-child(5) button,
+#containerPalletsModal tbody td:last-child button,
+#containerPalletsModal tbody td:last-child a {
+    margin: 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/*    Center-align numeric data specifically */
+/*#containerPalletsModal tbody td:nth-child(2),  Pack Size 
+#containerPalletsModal tbody td:nth-child(3),  Quantity 
+#containerPalletsModal tbody td:nth-child(4) {  Qty Balance 
+    text-align: center !important;
+    font-variant-numeric: tabular-nums;  Better number alignment 
+}*/
+
+/* CRITICAL: Fix modal positioning and centering */
+
+/* Reset any conflicting styles and force proper centering */
+#palletItemsModal {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background-color: rgba(0, 0, 0, 0.5) !important;
+    z-index: 9999 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 1rem !important;
+}
+
+    /* Hide modal properly */
+    #palletItemsModal.hidden {
+        display: none !important;
+    }
+
+    /* Modal container should be centered */
+    #palletItemsModal > div {
+        position: relative !important;
+        max-width: 80vw !important;
+        max-height: 67vh !important;
+        width: 100% !important;
+        background-color: white !important;
+        border-radius: 0.5rem !important;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+        overflow: hidden !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+/* Dark mode background */
+.dark #palletItemsModal > div {
+    background-color: #1f2937 !important;
+}
+
+/* Ensure close button is visible and clickable */
+#closePalletItemsModal {
+    position: relative !important;
+    z-index: 10 !important;
+    padding: 0.5rem !important;
+    border-radius: 0.375rem !important;
+    transition: all 0.2s !important;
+    color: #9ca3af !important;
+}
+
+    #closePalletItemsModal:hover {
+        background-color: rgba(0, 0, 0, 0.1) !important;
+        color: #374151 !important;
+        transform: scale(1.1) !important;
+    }
+
+.dark #closePalletItemsModal:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    color: #d1d5db !important;
+}
+
+/* Modal header styling */
+#palletItemsModal .bg-gray-50 {
+    flex-shrink: 0 !important;
+    padding: 1.5rem !important;
+    border-bottom: 1px solid #e5e7eb !important;
+}
+
+.dark #palletItemsModal .bg-gray-50 {
+    background-color: #374151 !important;
+    border-bottom-color: #4b5563 !important;
+}
+
+/* Modal content area */
+#palletItemsContent {
+    flex: 1 !important;
+    padding: 1.5rem !important;
+    overflow-y: auto !important;
+    min-height: 0 !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    #palletItemsModal {
+        padding: 0.5rem !important;
+    }
+
+        #palletItemsModal > div {
+            max-width: 95vw !important;
+            max-height: 90vh !important;
+        }
+
+        #palletItemsModal .bg-gray-50,
+        #palletItemsContent {
+            padding: 1rem !important;
+        }
+}
+
+/* Custom scrollbar for content */
+#palletItemsContent::-webkit-scrollbar {
+    width: 8px;
+}
+
+#palletItemsContent::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 4px;
+}
+
+#palletItemsContent::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+    #palletItemsContent::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+
+.dark #palletItemsContent::-webkit-scrollbar-track {
+    background: #374151;
+}
+
+.dark #palletItemsContent::-webkit-scrollbar-thumb {
+    background: #4b5563;
+}
+
+    .dark #palletItemsContent::-webkit-scrollbar-thumb:hover {
+        background: #6b7280;
+    }

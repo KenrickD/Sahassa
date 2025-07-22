@@ -1,0 +1,483 @@
+﻿@model WMS.WebApp.Models.Clients.ClientPageViewModel
+
+@{
+    var hasEditAccess = Model.HasEditAccess;
+    var isEdit = Model.IsEdit;
+    ViewData["Title"] = isEdit ? "Edit Client" : "Add Client";
+    ViewData["subTitle"] = isEdit ? "Client / Edit Client" : "Client / Add Client";
+}
+
+<div class="grid grid-cols-12 gap-6">
+    <div class="col-span-12">
+        <div class="card border-0">
+            @if (isEdit)
+            {
+                <!-- Client Overview Header -->
+                <div class="card-header">
+                    <div class="flex flex-wrap items-center justify-between gap-4">
+                        <div>
+                            <h4 class="mb-2">@Model.Client.Name</h4>
+                            <p class="text-neutral-400 mb-0">Client Code: #@Model.Client.Code</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="@(Model.Client.IsActive ? "bg-success-100 dark:bg-success-600/25 text-success-600 dark:text-success-400" : "bg-danger-100 dark:bg-danger-600/25 text-danger-600 dark:text-danger-400") px-6 py-1.5 rounded-full font-medium text-sm">
+                                @(Model.Client.IsActive ? "Active" : "Inactive")
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="card-body pt-0">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                        <div class="card shadow-none border border-gray-200 dark:border-neutral-600 dark:bg-neutral-700 rounded-lg h-full bg-gradient-to-r from-blue-600/10 to-bg-white">
+                            <div class="card-body p-4">
+                                <div class="flex flex-wrap items-center justify-between gap-3">
+                                    <div>
+                                        <p class="font-medium text-neutral-900 dark:text-white mb-1 text-sm">Warehouse</p>
+                                        <h6 class="mb-0 dark:text-white text-base">@Model.Client.WarehouseName</h6>
+                                    </div>
+                                    <div class="w-10 h-10 bg-blue-600 rounded-full flex justify-center items-center">
+                                        <iconify-icon icon="solar:buildings-outline" class="text-white text-lg mb-0"></iconify-icon>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card shadow-none border border-gray-200 dark:border-neutral-600 dark:bg-neutral-700 rounded-lg h-full bg-gradient-to-r from-green-600/10 to-bg-white">
+                            <div class="card-body p-4">
+                                <div class="flex flex-wrap items-center justify-between gap-3">
+                                    <div>
+                                        <p class="font-medium text-neutral-900 dark:text-white mb-1 text-sm">Products</p>
+                                        <h6 class="mb-0 dark:text-white text-base">@(Model.Client.ProductCount)</h6>
+                                    </div>
+                                    <div class="w-10 h-10 bg-blue-600 rounded-full flex justify-center items-center">
+                                        <iconify-icon icon="solar:box-outline" class="text-white text-lg mb-0"></iconify-icon>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="card-header">
+                    <h4 class="mb-0">Add New Client</h4>
+                </div>
+            }
+
+            <div class="card-body">
+                <!-- Tab Navigation -->
+                <div class="mb-6">
+                    <ul class="tab-style-gradient flex flex-wrap -mb-px text-sm font-medium text-center" id="client-tab" data-tabs-toggle="#client-tab-content" role="tablist">
+                        <li class="" role="presentation">
+                            <button class="py-2.5 px-4 border-t-2 font-semibold text-base inline-flex items-center gap-3 text-neutral-600" id="basic-info-tab" data-tabs-target="#basic-info" type="button" role="tab" aria-controls="basic-info" aria-selected="false">
+                                <iconify-icon icon="solar:user-outline"></iconify-icon>
+                                Basic Information
+                            </button>
+                        </li>
+                        @if (isEdit)
+                        {
+                            <li class="" role="presentation">
+                                <button class="py-2.5 px-4 border-t-2 font-semibold text-base inline-flex items-center gap-3 text-neutral-600 hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300" id="configuration-tab" data-tabs-target="#configuration" type="button" role="tab" aria-controls="configuration" aria-selected="false">
+                                    <iconify-icon icon="solar:settings-outline"></iconify-icon>
+                                    Configuration
+                                </button>
+                            </li>
+                        }
+                    </ul>
+                </div>
+
+                <div id="client-tab-content">
+                    <!-- Basic Information Tab -->
+                    <div class="hidden" id="basic-info" role="tabpanel" aria-labelledby="basic-info-tab">
+                        <form id="clientForm" asp-action="@(isEdit ? "Edit" : "Create")" asp-controller="Client" method="post">
+                            @if (isEdit)
+                            {
+                                <input type="hidden" asp-for="Client.Id" name="Id" />
+                            }
+
+                            <div class="grid grid-cols-12 gap-4">
+                                <!-- Warehouse Selection -->
+                                <div class="md:col-span-12 col-span-12">
+                                    <label class="form-label">Warehouse <span class="text-danger-600">*</span></label>
+                                    <div class="icon-field">
+                                        <span class="icon">
+                                            <iconify-icon icon="solar:buildings-outline"></iconify-icon>
+                                        </span>
+                                        <select asp-for="Client.WarehouseId" name="WarehouseId"
+                                                class="form-control form-select"
+                                                disabled="@(!hasEditAccess)"
+                                                required>
+                                            <option value="">Select Warehouse</option>
+                                            @foreach (var warehouse in Model.Warehouses)
+                                            {
+                                                <option value="@warehouse.Id"
+                                                        selected="@(warehouse.Id == Model.Client.WarehouseId)">
+                                                    @warehouse.DisplayText
+                                                </option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <span asp-validation-for="Client.WarehouseId" class="text-danger-600 text-sm"></span>
+                                    @if (!Model.Warehouses.Any())
+                                    {
+                                        <small class="text-warning-600">
+                                            <iconify-icon icon="solar:warning-outline" class="mr-1"></iconify-icon>
+                                            No active warehouses available. Please create a warehouse first.
+                                        </small>
+                                    }
+                                </div>
+
+                                <!-- Client Name -->
+                                <div class="md:col-span-6 col-span-12">
+                                    <label class="form-label">Client Name <span class="text-danger-600">*</span></label>
+                                    <input type="text"
+                                           asp-for="Client.Name"
+                                           name="Name"
+                                           class="form-control"
+                                           placeholder="Enter Client Name"
+                                           readonly="@(!hasEditAccess)"
+                                           required>
+                                    <span asp-validation-for="Client.Name" class="text-danger-600 text-sm"></span>
+                                </div>
+
+                                <!-- Client Code -->
+                                <div class="md:col-span-6 col-span-12">
+                                    <label class="form-label">Client Code</label>
+                                    <input type="text"
+                                           asp-for="Client.Code"
+                                           name="Code"
+                                           class="form-control"
+                                           placeholder="Enter Client Code"
+                                           readonly="@(!hasEditAccess)">
+                                    <span asp-validation-for="Client.Code" class="text-danger-600 text-sm"></span>
+                                </div>
+
+                                <!-- Contact Person -->
+                                <div class="md:col-span-6 col-span-12">
+                                    <label class="form-label">Contact Person</label>
+                                    <div class="icon-field">
+                                        <span class="icon">
+                                            <iconify-icon icon="f7:person"></iconify-icon>
+                                        </span>
+                                        <input type="text"
+                                               asp-for="Client.ContactPerson"
+                                               name="ContactPerson"
+                                               class="form-control"
+                                               placeholder="Enter Contact Person"
+                                               readonly="@(!hasEditAccess)">
+                                    </div>
+                                    <span asp-validation-for="Client.ContactPerson" class="text-danger-600 text-sm"></span>
+                                </div>
+
+                                <!-- Contact Email -->
+                                <div class="md:col-span-6 col-span-12">
+                                    <label class="form-label">Contact Email</label>
+                                    <div class="icon-field">
+                                        <span class="icon">
+                                            <iconify-icon icon="mage:email"></iconify-icon>
+                                        </span>
+                                        <input type="email"
+                                               asp-for="Client.ContactEmail"
+                                               name="ContactEmail"
+                                               class="form-control"
+                                               placeholder="Enter Contact Email"
+                                               readonly="@(!hasEditAccess)">
+                                    </div>
+                                    <span asp-validation-for="Client.ContactEmail" class="text-danger-600 text-sm"></span>
+                                </div>
+
+                                <!-- Contact Phone -->
+                                <div class="md:col-span-6 col-span-12">
+                                    <label class="form-label">Contact Phone</label>
+                                    <div class="icon-field">
+                                        <span class="icon">
+                                            <iconify-icon icon="solar:phone-calling-linear"></iconify-icon>
+                                        </span>
+                                        <input type="tel"
+                                               asp-for="Client.ContactPhone"
+                                               name="ContactPhone"
+                                               class="form-control"
+                                               placeholder="+1 (555) 000-0000"
+                                               readonly="@(!hasEditAccess)">
+                                    </div>
+                                    <span asp-validation-for="Client.ContactPhone" class="text-danger-600 text-sm"></span>
+                                </div>
+
+                                <!-- Status -->
+                                <div class="md:col-span-6 col-span-12">
+                                    <label class="form-label">Status</label>
+                                    <select asp-for="Client.IsActive" name="IsActive"
+                                            class="form-control form-select"
+                                            disabled="@(!hasEditAccess)">
+                                        <option value="true">Active</option>
+                                        <option value="false">Inactive</option>
+                                    </select>
+                                    <span asp-validation-for="Client.IsActive" class="text-danger-600 text-sm"></span>
+                                </div>
+
+                                <!-- Billing Address -->
+                                <div class="md:col-span-6 col-span-12">
+                                    <label class="form-label">Billing Address</label>
+                                    <textarea asp-for="Client.BillingAddress" name="BillingAddress"
+                                              class="form-control"
+                                              rows="4"
+                                              placeholder="Enter billing address..."
+                                              readonly="@(!hasEditAccess)"></textarea>
+                                    <span asp-validation-for="Client.BillingAddress" class="text-danger-600 text-sm"></span>
+                                </div>
+
+                                <!-- Shipping Address -->
+                                <div class="md:col-span-6 col-span-12">
+                                    <label class="form-label">Shipping Address</label>
+                                    <textarea asp-for="Client.ShippingAddress" name="ShippingAddress"
+                                              class="form-control"
+                                              rows="4"
+                                              placeholder="Enter shipping address..."
+                                              readonly="@(!hasEditAccess)"></textarea>
+                                    <span asp-validation-for="Client.ShippingAddress" class="text-danger-600 text-sm"></span>
+                                </div>
+
+                                <!-- Form Actions -->
+                                <div class="col-span-12">
+                                    @if (hasEditAccess)
+                                    {
+                                        <div class="flex items-center justify-end gap-3 mt-4">
+                                            <a asp-controller="Client" asp-action="Index"
+                                               class="btn bg-neutral-400 border-neutral-400 hover:bg-neutral-500 hover:border-neutral-500 text-white px-8">
+                                                Cancel
+                                            </a>
+                                            <button type="submit" class="btn btn-primary-600 px-8">
+                                                @(isEdit ? "Update Client" : "Create Client")
+                                            </button>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="flex items-center justify-end gap-3 mt-4">
+                                            <a asp-controller="Client" asp-action="Index"
+                                               class="btn bg-neutral-400 border-neutral-400 hover:bg-neutral-500 hover:border-neutral-500 text-white px-8">
+                                                Back To List
+                                            </a>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Configuration Tab -->
+                    @if (isEdit)
+                    {
+                        <div class="hidden" id="configuration" role="tabpanel" aria-labelledby="configuration-tab">
+                            @if (!hasEditAccess)
+                            {
+                                <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200 px-4 py-3 rounded-lg">
+                                    <div class="flex items-center">
+                                        <iconify-icon icon="solar:info-circle-outline" class="text-lg mr-2"></iconify-icon>
+                                        <span>You do not have permission to manage client configuration.</span>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <form id="configurationForm">
+                                    <input type="hidden" id="clientId" value="@Model.Client.Id" />
+
+                                    <div class="grid grid-cols-12 gap-6">
+                                        <!-- Quality Control Section -->
+                                        <div class="md:col-span-6 col-span-12">
+                                            <div class="card border-0 bg-gray-50 dark:bg-neutral-800">
+                                                <div class="card-body p-4">
+                                                    <h6 class="text-base font-semibold mb-4 flex items-center gap-2">
+                                                        <iconify-icon icon="solar:shield-check-outline"></iconify-icon>
+                                                        Quality Control
+                                                    </h6>
+
+                                                    <div class="space-y-4">
+                                                        <div class="flex items-center gap-3">
+                                                            <input type="checkbox"
+                                                                   id="requiresQualityCheck"
+                                                                   asp-for="Client.RequiresQualityCheck"
+                                                                   name="RequiresQualityCheck"
+                                                                   class="form-checkbox h-4 w-4 text-primary-600">
+                                                            <label for="requiresQualityCheck" class="text-sm font-medium">
+                                                                Requires Quality Check
+                                                            </label>
+                                                        </div>
+
+                                                        <div class="flex items-center gap-3">
+                                                            <input type="checkbox"
+                                                                   id="requiresAppointment"
+                                                                   asp-for="Client.RequiresAppointmentForReceiving"
+                                                                   name="RequiresAppointmentForReceiving"
+                                                                   class="form-checkbox h-4 w-4 text-primary-600">
+                                                            <label for="requiresAppointment" class="text-sm font-medium">
+                                                                Requires Appointment for Receiving
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Automation Section -->
+                                        <div class="md:col-span-6 col-span-12">
+                                            <div class="card border-0 bg-gray-50 dark:bg-neutral-800">
+                                                <div class="card-body p-4">
+                                                    <h6 class="text-base font-semibold mb-4 flex items-center gap-2">
+                                                        <iconify-icon icon="solar:settings-outline"></iconify-icon>
+                                                        Automation
+                                                    </h6>
+
+                                                    <div class="space-y-4">
+                                                        <div class="flex items-center gap-3">
+                                                            <input type="checkbox"
+                                                                   id="autoGenerateReceiving"
+                                                                   asp-for="Client.AutoGenerateReceivingLabels"
+                                                                   name="AutoGenerateReceivingLabels"
+                                                                   class="form-checkbox h-4 w-4 text-primary-600">
+                                                            <label for="autoGenerateReceiving" class="text-sm font-medium">
+                                                                Auto Generate Receiving Labels
+                                                            </label>
+                                                        </div>
+
+                                                        <div class="flex items-center gap-3">
+                                                            <input type="checkbox"
+                                                                   id="autoGenerateShipping"
+                                                                   asp-for="Client.AutoGenerateShippingLabels"
+                                                                   name="AutoGenerateShippingLabels"
+                                                                   class="form-checkbox h-4 w-4 text-primary-600">
+                                                            <label for="autoGenerateShipping" class="text-sm font-medium">
+                                                                Auto Generate Shipping Labels
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Financial Settings -->
+                                        <div class="md:col-span-6 col-span-12">
+                                            <div class="card border-0 bg-gray-50 dark:bg-neutral-800">
+                                                <div class="card-body p-4">
+                                                    <h6 class="text-base font-semibold mb-4 flex items-center gap-2">
+                                                        <iconify-icon icon="solar:dollar-outline"></iconify-icon>
+                                                        Financial Settings
+                                                    </h6>
+
+                                                    <div class="space-y-4">
+                                                        <div>
+                                                            <label class="form-label">Handling Fee (%)</label>
+                                                            <input type="number"
+                                                                   asp-for="Client.HandlingFeePercentage"
+                                                                   name="HandlingFeePercentage"
+                                                                   class="form-control"
+                                                                   min="0" max="100" step="0.01"
+                                                                   placeholder="0.00">
+                                                        </div>
+
+                                                        <div>
+                                                            <label class="form-label">Storage Fee per m³ ($)</label>
+                                                            <input type="number"
+                                                                   asp-for="Client.StorageFeePerCubicMeter"
+                                                                   name="StorageFeePerCubicMeter"
+                                                                   class="form-control"
+                                                                   min="0" step="0.01"
+                                                                   placeholder="0.00">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Operational Settings -->
+                                        <div class="md:col-span-6 col-span-12">
+                                            <div class="card border-0 bg-gray-50 dark:bg-neutral-800">
+                                                <div class="card-body p-4">
+                                                    <h6 class="text-base font-semibold mb-4 flex items-center gap-2">
+                                                        <iconify-icon icon="solar:clipboard-outline"></iconify-icon>
+                                                        Operations
+                                                    </h6>
+
+                                                    <div class="space-y-4">
+                                                        <div>
+                                                            <label class="form-label">Default Lead Time (Days)</label>
+                                                            <input type="number"
+                                                                   asp-for="Client.DefaultLeadTimeDays"
+                                                                   name="DefaultLeadTimeDays"
+                                                                   class="form-control"
+                                                                   min="1" max="365"
+                                                                   placeholder="7">
+                                                        </div>
+
+                                                        <div>
+                                                            <label class="form-label">Low Stock Threshold</label>
+                                                            <input type="number"
+                                                                   asp-for="Client.LowStockThreshold"
+                                                                   name="LowStockThreshold"
+                                                                   class="form-control"
+                                                                   min="0"
+                                                                   placeholder="10">
+                                                        </div>
+
+                                                        <div class="flex items-center gap-3">
+                                                            <input type="checkbox"
+                                                                   id="sendLowStockAlerts"
+                                                                   asp-for="Client.SendLowStockAlerts" name="SendLowStockAlerts"
+                                                                   class="form-checkbox h-4 w-4 text-primary-600">
+                                                            <label for="sendLowStockAlerts" class="text-sm font-medium">
+                                                                Send Low Stock Alerts
+                                                            </label>
+                                                        </div>
+
+                                                        <div class="flex items-center gap-3">
+                                                            <input type="checkbox"
+                                                                   id="allowPartialShipments"
+                                                                   asp-for="Client.AllowPartialShipments"
+                                                                   name="AllowPartialShipments"
+                                                                   class="form-checkbox h-4 w-4 text-primary-600">
+                                                            <label for="allowPartialShipments" class="text-sm font-medium">
+                                                                Allow Partial Shipments
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Configuration Actions -->
+                                        <div class="col-span-12">
+                                            <div class="flex items-center justify-end gap-3 mt-4">
+                                                <a asp-controller="Client" asp-action="Index"
+                                                   class="btn bg-neutral-400 border-neutral-400 hover:bg-neutral-500 hover:border-neutral-500 text-white px-8">
+                                                    Back To List
+                                                </a>
+                                                <button type="button" id="resetConfigBtn"
+                                                        class="btn bg-neutral-400 border-neutral-400 hover:bg-neutral-500 hover:border-neutral-500 text-white px-8">
+                                                    Reset
+                                                </button>
+                                                <button type="button" id="saveConfigBtn"
+                                                        class="btn btn-primary-600 px-8">
+                                                    Save Configuration
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </form>
+                            }
+                        </div>
+                    }
+                </div>
+                <input type="hidden" id="currentClientId" value="@Model.Client.Id" />
+
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/pages/clients/detail.js" asp-append-version="true"></script>
+}

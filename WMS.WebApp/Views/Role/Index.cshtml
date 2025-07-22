@@ -1,0 +1,59 @@
+﻿@model WMS.WebApp.Models.Roles.RoleListViewModel
+
+@{
+    ViewData["Title"] = "Roles";
+    ViewData["subTitle"] = "Role Management";
+}
+
+<div class="grid grid-cols-12">
+    <div class="col-span-12">
+        <div class="card border-0 overflow-hidden">
+            <div class="card-header flex items-center justify-between">
+                <h6 class="card-title mb-0 text-lg">Role List</h6>
+                <a asp-action="Create" asp-controller="Role" asp-authorize-permission="Role.Write" class="btn btn-primary text-sm btn-sm px-3 py-3 rounded-lg flex items-center gap-2">
+                    <iconify-icon icon="ic:baseline-plus" class="icon text-xl line-height-1"></iconify-icon>
+                    Add Role
+                </a>
+            </div>
+            <div class="card-body">
+                <table id="roles-table" class="border border-neutral-200 dark:border-neutral-600 rounded-lg border-separate">
+                    <thead>
+                        <tr>
+                            <th scope="col" class="text-neutral-800 dark:text-white">
+                                <div class="form-check style-check flex items-center">
+                                    <input class="form-check-input" id="select-all" type="checkbox">
+                                    <label class="ms-2 form-check-label" for="select-all">
+                                        ID
+                                    </label>
+                                </div>
+                            </th>
+                            <th scope="col" class="text-neutral-800 dark:text-white">
+                                <div class="flex items-center gap-2">
+                                    Name
+                                </div>
+                            </th>
+                            <th scope="col" class="text-neutral-800 dark:text-white">
+                                <div class="flex items-center gap-2">
+                                    Description
+                                </div>
+                            </th>
+                            <th scope="col" class="text-neutral-800 dark:text-white">
+                                <div class="flex items-center gap-2">
+                                    Actions
+                                </div>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- DataTables will populate this -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <!-- Include the external script file -->
+    <script src="~/js/pages/Roles/list.js" asp-append-version="true"></script>
+}

@@ -1,0 +1,651 @@
+﻿@model WMS.WebApp.Models.Products.ProductPageViewModel
+
+@{
+    var hasEditAccess = Model.HasEditAccess;
+    var isEdit = Model.IsEdit;
+    ViewData["Title"] = isEdit ? "Edit Product" : "Add Product";
+    ViewData["subTitle"] = isEdit ? "Product / Edit Product" : "Product / Add Product";
+}
+
+<div class="grid grid-cols-12 gap-6">
+    <div class="col-span-12">
+        <div class="card border-0">
+            @if (isEdit)
+            {
+                <!-- Product Overview Header -->
+                <div class="card-header">
+                    <div class="flex flex-wrap items-center justify-between gap-4">
+                        <div class="flex items-center gap-4">
+                            <div class="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                                @if (!string.IsNullOrEmpty(Model.Product.ImageUrl))
+                                {
+                                    <img src="@Model.Product.GetProductImageUrl()" alt="@Model.Product.Name" class="w-full h-full object-cover">
+                                }
+                                else
+                                {
+                                    <iconify-icon icon="solar:box-outline" class="text-gray-400 text-2xl"></iconify-icon>
+                                }
+                            </div>
+                            <div>
+                                <h4 class="mb-2">@Model.Product.Name</h4>
+                                <p class="text-neutral-400 mb-0">SKU: #@Model.Product.SKU</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="@(Model.Product.IsActive ? "bg-success-100 dark:bg-success-600/25 text-success-600 dark:text-success-400" : "bg-danger-100 dark:bg-danger-600/25 text-danger-600 dark:text-danger-400") px-6 py-1.5 rounded-full font-medium text-sm">
+                                @(Model.Product.IsActive ? "Active" : "Inactive")
+                            </span>
+                            <span class="@Model.Product.GetStockStatusColor() px-6 py-1.5 rounded-full font-medium text-sm bg-gray-100 dark:bg-gray-800">
+                                @Model.Product.GetStockStatusDisplay()
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="card-body pt-0">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                        <div class="card shadow-none border border-gray-200 dark:border-neutral-600 dark:bg-neutral-700 rounded-lg h-full bg-gradient-to-r from-blue-600/10 to-bg-white">
+                            <div class="card-body p-4">
+                                <div class="flex flex-wrap items-center justify-between gap-3">
+                                    <div>
+                                        <p class="font-medium text-neutral-900 dark:text-white mb-1 text-sm">Client</p>
+                                        <h6 class="mb-0 dark:text-white text-base">@Model.Product.ClientName</h6>
+                                    </div>
+                                    <div class="w-10 h-10 bg-blue-600 rounded-full flex justify-center items-center">
+                                        <iconify-icon icon="solar:user-outline" class="text-white text-lg mb-0"></iconify-icon>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card shadow-none border border-gray-200 dark:border-neutral-600 dark:bg-neutral-700 rounded-lg h-full bg-gradient-to-r from-green-600/10 to-bg-white">
+                            <div class="card-body p-4">
+                                <div class="flex flex-wrap items-center justify-between gap-3">
+                                    <div>
+                                        <p class="font-medium text-neutral-900 dark:text-white mb-1 text-sm">Current Stock</p>
+                                        <h6 class="mb-0 dark:text-white text-base">@Model.Product.CurrentStockLevel.ToString("N0")</h6>
+                                    </div>
+                                    <div class="w-10 h-10 bg-green-600 rounded-full flex justify-center items-center">
+                                        <iconify-icon icon="solar:box-outline" class="text-white text-lg mb-0"></iconify-icon>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card shadow-none border border-gray-200 dark:border-neutral-600 dark:bg-neutral-700 rounded-lg h-full bg-gradient-to-r from-purple-600/10 to-bg-white">
+                            <div class="card-body p-4">
+                                <div class="flex flex-wrap items-center justify-between gap-3">
+                                    <div>
+                                        <p class="font-medium text-neutral-900 dark:text-white mb-1 text-sm">Inventory Items</p>
+                                        <h6 class="mb-0 dark:text-white text-base">@Model.Product.InventoryCount</h6>
+                                    </div>
+                                    <div class="w-10 h-10 bg-purple-600 rounded-full flex justify-center items-center">
+                                        <iconify-icon icon="solar:layers-outline" class="text-white text-lg mb-0"></iconify-icon>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card shadow-none border border-gray-200 dark:border-neutral-600 dark:bg-neutral-700 rounded-lg h-full bg-gradient-to-r from-orange-600/10 to-bg-white">
+                            <div class="card-body p-4">
+                                <div class="flex flex-wrap items-center justify-between gap-3">
+                                    <div>
+                                        <p class="font-medium text-neutral-900 dark:text-white mb-1 text-sm">Volume</p>
+                                        <h6 class="mb-0 dark:text-white text-base">@Model.Product.GetVolume().ToString("N2") m³</h6>
+                                    </div>
+                                    <div class="w-10 h-10 bg-orange-600 rounded-full flex justify-center items-center">
+                                        <iconify-icon icon="solar:cube-outline" class="text-white text-lg mb-0"></iconify-icon>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="card-header">
+                    <h4 class="mb-0">Add New Product</h4>
+                </div>
+            }
+
+            <div class="card-body">
+                <form id="productForm" asp-action="@(isEdit ? "Edit" : "Create")" asp-controller="Product" method="post" enctype="multipart/form-data">
+                    @if (isEdit)
+                    {
+                        <input type="hidden" asp-for="Product.Id" name="Id" />
+                    }
+
+                    <div class="grid grid-cols-12 gap-6">
+                        <!-- Client Selection -->
+                        <div class="md:col-span-6 col-span-12">
+                            <label class="form-label">Client <span class="text-danger-600">*</span></label>
+                            <div class="icon-field">
+                                <span class="icon">
+                                    <iconify-icon icon="solar:user-outline"></iconify-icon>
+                                </span>
+                                <select asp-for="Product.ClientId" name="ClientId"
+                                        class="form-control form-select"
+                                        disabled="@(!hasEditAccess)"
+                                        required>
+                                    <option value="">Select Client</option>
+                                    @foreach (var client in Model.Clients)
+                                    {
+                                        <option value="@client.Id"
+                                                selected="@(client.Id == Model.Product.ClientId)">
+                                            @client.DisplayText
+                                        </option>
+                                    }
+                                </select>
+                            </div>
+                            <span asp-validation-for="Product.ClientId" class="text-danger-600 text-sm"></span>
+                            @if (!Model.Clients.Any())
+                            {
+                                <small class="text-warning-600">
+                                    <iconify-icon icon="solar:warning-outline" class="mr-1"></iconify-icon>
+                                    No active clients available. Please create a client first.
+                                </small>
+                            }
+                        </div>
+                        <!-- Product Type -->
+                        <div class="md:col-span-6 col-span-12">
+                            <label class="form-label">Type <span class="text-danger-600">*</span></label>
+                            <div class="icon-field">
+                                <span class="icon">
+                                    <iconify-icon icon="solar:settings-outline"></iconify-icon>
+                                </span>
+                                <select asp-for="Product.ProductTypeId" name="ProductTypeId"
+                                        class="form-control form-select"
+                                        disabled="@(!hasEditAccess)"
+                                        required>
+                                    <option value="">Select Type</option>
+                                    @foreach (var productType in Model.ProductTypes)
+                                    {
+                                        <option value="@productType.Id"
+                                                selected="@(productType.Id == Model.Product.ProductTypeId)">
+                                            @productType.DisplayText
+                                        </option>
+                                    }
+                                </select>
+                            </div>
+                            <span asp-validation-for="Product.ProductTypeId" class="text-danger-600 text-sm"></span>
+                            @if (!Model.ProductTypes.Any())
+                            {
+                                <small class="text-warning-600">
+                                    <iconify-icon icon="solar:warning-outline" class="mr-1"></iconify-icon>
+                                    No product types available. Please create a product type in general code first.
+                                </small>
+                            }
+                        </div>
+                  @*       <!-- Product Image -->
+                        <div class="md:col-span-6 col-span-12">
+                            <label class="form-label">Product Image</label>
+                            <div class="flex items-center gap-4">
+                                <div class="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                                    @if (!string.IsNullOrEmpty(Model.Product.ImageUrl))
+                                    {
+                                        <img id="product-image-preview" src="@Model.Product.GetProductImageUrl()" alt="Product" class="w-full h-full object-cover">
+                                    }
+                                    else
+                                    {
+                                        <iconify-icon id="product-image-placeholder" icon="solar:box-outline" class="text-gray-400 text-2xl"></iconify-icon>
+                                        <img id="product-image-preview" src="#" alt="Product" class="w-full h-full object-cover hidden">
+                                    }
+                                </div>
+                                <div class="flex-1">
+                                    <input type="file" asp-for="Product.ProductImage" name="ProductImage"
+                                           class="form-control" accept="image/*" 
+                                           disabled="@(!hasEditAccess)"
+                                           onchange="previewProductImage(this)">
+                                    <small class="text-gray-500">JPG, PNG, GIF up to 5MB</small>
+                                    @if (isEdit && !string.IsNullOrEmpty(Model.Product.ImageUrl))
+                                    {
+                                        <div class="mt-2">
+                                            <label class="flex items-center gap-2">
+                                                <input type="checkbox" asp-for="Product.RemoveProductImage" name="RemoveProductImage"
+                                                       disabled="@(!hasEditAccess)"
+                                                       onchange="toggleImageRemoval(this)">
+                                                <span class="text-sm">Remove current image</span>
+                                            </label>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div> *@
+                     
+                      
+                        <!-- Basic Information Section -->
+                        <div class="col-span-12">
+                            <h6 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                                <iconify-icon icon="solar:info-circle-outline" class="text-blue-600"></iconify-icon>
+                                Basic Information
+                            </h6>
+                        </div>
+
+                        <!-- Product Name -->
+                        <div class="md:col-span-6 col-span-12">
+                            <label class="form-label">Product Name <span class="text-danger-600">*</span></label>
+                            <div class="icon-field">
+                                <span class="icon">
+                                    <iconify-icon icon="solar:tag-outline"></iconify-icon>
+                                </span>
+                                <input type="text"
+                                       asp-for="Product.Name"
+                                       name="Name"
+                                       class="form-control"
+                                       placeholder="Enter Product Name"
+                                       readonly="@(!hasEditAccess)"
+                                       required>
+                            </div>
+                            <span asp-validation-for="Product.Name" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <!-- SKU -->
+                        <div class="md:col-span-6 col-span-12">
+                            <label class="form-label">SKU <span class="text-danger-600">*</span></label>
+                            <div class="icon-field">
+                                <span class="icon">
+                                    <iconify-icon icon="solar:code-outline"></iconify-icon>
+                                </span>
+                                <input type="text"
+                                       asp-for="Product.SKU"
+                                       name="SKU"
+                                       class="form-control font-mono"
+                                       placeholder="Enter SKU"
+                                       readonly="@(!hasEditAccess)"
+                                       required>
+                            </div>
+                            <span asp-validation-for="Product.SKU" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <!-- Category -->
+                        <div class="md:col-span-6 col-span-12">
+                            <label class="form-label">Category <span class="text-danger-600">*</span></label>
+                            <div class="icon-field">
+                                <span class="icon">
+                                    <iconify-icon icon="solar:box-outline"></iconify-icon>
+                                </span>
+                                <select asp-for="Product.ProductCategoryId" name="ProductCategoryId"
+                                        class="form-control form-select"
+                                        disabled="@(!hasEditAccess)"
+                                        required>
+                                    <option value="">Select Category</option>
+                                    @foreach (var productCategory in Model.ProductCategories)
+                                    {
+                                        <option value="@productCategory.Id"
+                                                selected="@(productCategory.Id == Model.Product.ProductCategoryId)">
+                                            @productCategory.DisplayText
+                                        </option>
+                                    }
+                                </select>
+                            </div>
+                            <span asp-validation-for="Product.ProductCategoryId" class="text-danger-600 text-sm"></span>
+                            @if (!Model.ProductCategories.Any())
+                            {
+                                <small class="text-warning-600">
+                                    <iconify-icon icon="solar:warning-outline" class="mr-1"></iconify-icon>
+                                    No product Categorys available. Please create a product Category in general code first.
+                                </small>
+                            }
+                        </div>
+
+                        <!-- Barcode -->
+                        <div class="md:col-span-6 col-span-12">
+                            <label class="form-label">Barcode</label>
+                            <div class="icon-field">
+                                <span class="icon">
+                                    <iconify-icon icon="solar:qr-code-outline"></iconify-icon>
+                                </span>
+                                <input type="text"
+                                       asp-for="Product.Barcode"
+                                       name="Barcode"
+                                       class="form-control font-mono"
+                                       placeholder="Enter Barcode"
+                                       readonly="@(!hasEditAccess)">
+                            </div>
+                            <span asp-validation-for="Product.Barcode" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="col-span-12">
+                            <label class="form-label">Description</label>
+                            <textarea asp-for="Product.Description" name="Description"
+                                      class="form-control"
+                                      rows="3"
+                                      placeholder="Enter product description..."
+                                      readonly="@(!hasEditAccess)"></textarea>
+                            <span asp-validation-for="Product.Description" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <!-- Physical Dimensions Section -->
+                        <div class="col-span-12">
+                            <h6 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                                <iconify-icon icon="solar:ruler-outline" class="text-purple-600"></iconify-icon>
+                                Physical Dimensions
+                            </h6>
+                        </div>
+
+                        <!-- Weight -->
+                        <div class="md:col-span-3 col-span-12">
+                            <label class="form-label">Weight (kg)</label>
+                            <div class="icon-field">
+                                <span class="icon">
+                                    <iconify-icon icon="solar:scale-outline"></iconify-icon>
+                                </span>
+                                <input type="number"
+                                       asp-for="Product.Weight"
+                                       name="Weight"
+                                       class="form-control"
+                                       placeholder="0.00"
+                                       min="0" step="0.01"
+                                       readonly="@(!hasEditAccess)">
+                            </div>
+                            <span asp-validation-for="Product.Weight" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <!-- Length -->
+                        <div class="md:col-span-3 col-span-12">
+                            <label class="form-label">Length (m)</label>
+                            <div class="icon-field">
+                                <span class="icon">
+                                    <iconify-icon icon="solar:ruler-outline"></iconify-icon>
+                                </span>
+                                <input type="number"
+                                       asp-for="Product.Length"
+                                       name="Length"
+                                       class="form-control"
+                                       placeholder="0.00"
+                                       min="0" step="0.01"
+                                       readonly="@(!hasEditAccess)">
+                            </div>
+                            <span asp-validation-for="Product.Length" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <!-- Width -->
+                        <div class="md:col-span-3 col-span-12">
+                            <label class="form-label">Width (m)</label>
+                            <div class="icon-field">
+                                <span class="icon">
+                                    <iconify-icon icon="solar:ruler-outline"></iconify-icon>
+                                </span>
+                                <input type="number"
+                                       asp-for="Product.Width"
+                                       name="Width"
+                                       class="form-control"
+                                       placeholder="0.00"
+                                       min="0" step="0.01"
+                                       readonly="@(!hasEditAccess)">
+                            </div>
+                            <span asp-validation-for="Product.Width" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <!-- Height -->
+                        <div class="md:col-span-3 col-span-12">
+                            <label class="form-label">Height (m)</label>
+                            <div class="icon-field">
+                                <span class="icon">
+                                    <iconify-icon icon="solar:ruler-outline"></iconify-icon>
+                                </span>
+                                <input type="number"
+                                       asp-for="Product.Height"
+                                       name="Height"
+                                       class="form-control"
+                                       placeholder="0.00"
+                                       min="0" step="0.01"
+                                       readonly="@(!hasEditAccess)">
+                            </div>
+                            <span asp-validation-for="Product.Height" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <!-- Inventory Management Section -->
+                        <div class="col-span-12">
+                            <h6 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                                <iconify-icon icon="solar:layers-outline" class="text-green-600"></iconify-icon>
+                                Inventory Management
+                            </h6>
+                        </div>
+
+                        <!-- Unit of Measure -->
+                        <div class="md:col-span-6 col-span-12">
+                            <label class="form-label">Unit Of Measure <span class="text-danger-600">*</span></label>
+                            <div class="icon-field">
+                                <span class="icon">
+                                    <iconify-icon icon="solar:scale-outline"></iconify-icon>
+                                </span>
+                                <select asp-for="Product.UnitOfMeasureCodeId" name="UnitOfMeasureCodeId"
+                                        class="form-control form-select"
+                                        disabled="@(!hasEditAccess)"
+                                        required>
+                                    <option value="">Select Unit Of Measure</option>
+                                    @foreach (var productUnitOfMeasure in Model.ProductUnitOfMeasures)
+                                    {
+                                        <option value="@productUnitOfMeasure.Id"
+                                                selected="@(productUnitOfMeasure.Id == Model.Product.UnitOfMeasureCodeId)">
+                                            @productUnitOfMeasure.DisplayText
+                                        </option>
+                                    }
+                                </select>
+                            </div>
+                            <span asp-validation-for="Product.UnitOfMeasureCodeId" class="text-danger-600 text-sm"></span>
+                            @if (!Model.ProductUnitOfMeasures.Any())
+                            {
+                                <small class="text-warning-600">
+                                    <iconify-icon icon="solar:warning-outline" class="mr-1"></iconify-icon>
+                                    No Unit product Of Measures available. Please create a product Unit of Measure in general code first.
+                                </small>
+                            }
+                        </div>
+
+                        <!-- Sub Category -->
+                        <div class="md:col-span-6 col-span-12">
+                            <label class="form-label">Sub Category</label>
+                            <input type="text"
+                                   asp-for="Product.SubCategory"
+                                   name="SubCategory"
+                                   class="form-control"
+                                   placeholder="Enter Sub Category"
+                                   readonly="@(!hasEditAccess)">
+                            <span asp-validation-for="Product.SubCategory" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <!-- Min Stock Level -->
+                    @*     <div class="md:col-span-3 col-span-12">
+                            <label class="form-label">Min Stock Level</label>
+                            <input type="number"
+                                   asp-for="Product.MinStockLevel"
+                                   name="MinStockLevel"
+                                   class="form-control"
+                                   placeholder="0"
+                                   min="0" step="0.01"
+                                   readonly="@(!hasEditAccess)">
+                            <span asp-validation-for="Product.MinStockLevel" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <!-- Max Stock Level -->
+                        <div class="md:col-span-3 col-span-12">
+                            <label class="form-label">Max Stock Level</label>
+                            <input type="number"
+                                   asp-for="Product.MaxStockLevel"
+                                   name="MaxStockLevel"
+                                   class="form-control"
+                                   placeholder="0"
+                                   min="0" step="0.01"
+                                   readonly="@(!hasEditAccess)">
+                            <span asp-validation-for="Product.MaxStockLevel" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <!-- Reorder Point -->
+                        <div class="md:col-span-3 col-span-12">
+                            <label class="form-label">Reorder Point</label>
+                            <input type="number"
+                                   asp-for="Product.ReorderPoint"
+                                   name="ReorderPoint"
+                                   class="form-control"
+                                   placeholder="0"
+                                   min="0" step="0.01"
+                                   readonly="@(!hasEditAccess)">
+                            <span asp-validation-for="Product.ReorderPoint" class="text-danger-600 text-sm"></span>
+                        </div>
+
+                        <!-- Reorder Quantity -->
+                        <div class="md:col-span-3 col-span-12">
+                            <label class="form-label">Reorder Quantity</label>
+                            <input type="number"
+                                   asp-for="Product.ReorderQuantity"
+                                   name="ReorderQuantity"
+                                   class="form-control"
+                                   placeholder="0"
+                                   min="0" step="0.01"
+                                   readonly="@(!hasEditAccess)">
+                            <span asp-validation-for="Product.ReorderQuantity" class="text-danger-600 text-sm"></span>
+                        </div> *@
+
+                        <!-- Tracking Options Section -->
+                        <div class="col-span-12">
+                            <h6 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                                <iconify-icon icon="solar:eye-outline" class="text-orange-600"></iconify-icon>
+                                Tracking Options
+                            </h6>
+                        </div>
+
+                        <div class="col-span-12">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div class="flex items-center gap-3">
+                                    <input type="checkbox"
+                                           asp-for="Product.RequiresLotTracking"
+                                           name="RequiresLotTracking"
+                                           class="form-checkbox h-4 w-4 text-primary-600"
+                                           disabled="@(!hasEditAccess)">
+                                    <label class="text-sm font-medium">
+                                        Requires Lot Tracking
+                                    </label>
+                                </div>
+
+                                <div class="flex items-center gap-3">
+                                    <input type="checkbox"
+                                           asp-for="Product.RequiresExpirationDate"
+                                           name="RequiresExpirationDate"
+                                           class="form-checkbox h-4 w-4 text-primary-600"
+                                           disabled="@(!hasEditAccess)">
+                                    <label class="text-sm font-medium">
+                                        Requires Expiration Date
+                                    </label>
+                                </div>
+
+                                <div class="flex items-center gap-3">
+                                    <input type="checkbox"
+                                           asp-for="Product.RequiresSerialNumber"
+                                           name="RequiresSerialNumber"
+                                           class="form-checkbox h-4 w-4 text-primary-600"
+                                           disabled="@(!hasEditAccess)">
+                                    <label class="text-sm font-medium">
+                                        Requires Serial Number
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Properties Section -->
+                        <div class="col-span-12">
+                            <h6 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                                <iconify-icon icon="solar:settings-outline" class="text-gray-600"></iconify-icon>
+                                Properties
+                            </h6>
+                        </div>
+
+                        <div class="col-span-12">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div class="flex items-center gap-3">
+                                    <input type="checkbox"
+                                           asp-for="Product.IsActive"
+                                           name="IsActive"
+                                           class="form-checkbox h-4 w-4 text-primary-600"
+                                           disabled="@(!hasEditAccess)">
+                                    <label class="text-sm font-medium">
+                                        Active
+                                    </label>
+                                </div>
+
+                                <div class="flex items-center gap-3">
+                                    <input type="checkbox"
+                                           asp-for="Product.IsHazardous"
+                                           name="IsHazardous"
+                                           class="form-checkbox h-4 w-4 text-red-600"
+                                           disabled="@(!hasEditAccess)">
+                                    <label class="text-sm font-medium">
+                                        Hazardous Material
+                                    </label>
+                                </div>
+
+                                <div class="flex items-center gap-3">
+                                    <input type="checkbox"
+                                           asp-for="Product.IsFragile"
+                                           name="IsFragile"
+                                           class="form-checkbox h-4 w-4 text-yellow-600"
+                                           disabled="@(!hasEditAccess)">
+                                    <label class="text-sm font-medium">
+                                        Fragile Item
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="col-span-12">
+                            @if (hasEditAccess)
+                            {
+                                <div class="flex items-center justify-end gap-3 mt-6">
+                                    <a asp-controller="Product" asp-action="Index"
+                                       class="btn bg-neutral-400 border-neutral-400 hover:bg-neutral-500 hover:border-neutral-500 text-white px-8">
+                                        Cancel
+                                    </a>
+                                    <button type="submit" class="btn btn-primary-600 px-8">
+                                        @(isEdit ? "Update Product" : "Create Product")
+                                    </button>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="flex items-center justify-end gap-3 mt-6">
+                                    <a asp-controller="Product" asp-action="Index"
+                                       class="btn btn-primary-600 px-8">
+                                        Back to Products
+                                    </a>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </form>
+
+                <input type="hidden" id="currentProductId" value="@Model.Product.Id" />
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/pages/products/detail.js" asp-append-version="true"></script>
+    <script>
+        function previewProductImage(input) {
+            if (input.files && input.files[0]) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    $('#product-image-preview').attr('src', e.target.result).removeClass('hidden');
+                    $('#product-image-placeholder').addClass('hidden');
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function toggleImageRemoval(checkbox) {
+            if (checkbox.checked) {
+                $('#product-image-preview').addClass('opacity-50');
+                $('input[name="ProductImage"]').prop('disabled', true);
+            } else {
+                $('#product-image-preview').removeClass('opacity-50');
+                $('input[name="ProductImage"]').prop('disabled', false);
+            }
+        }
+    </script>
+}

@@ -1,0 +1,210 @@
+﻿@model WMS.Domain.DTOs.GIV_FinishedGood.FinishedGoodReleaseDto
+<style>
+    .table.table-bordered {
+        width: 100%;
+        table-layout: auto;
+    }
+
+        .table.table-bordered th:first-child,
+        .table.table-bordered td:first-child {
+            padding-right: 5px;
+            width: 8% !important;
+        }
+
+        .table.table-bordered th:nth-child(2),
+        .table.table-bordered td:nth-child(2) {
+            padding-left: 5px;
+        }
+
+    td:last-child {
+        max-width: 800px;
+        overflow-x: auto;
+    }
+
+    .card {
+        min-width: 220px;
+        max-width: 250px;
+        margin: 5px;
+    }
+
+    .pallets-container {
+        display: flex;
+        flex-wrap: wrap;
+        align-content: flex-start;
+        max-height: 500px;
+        overflow-y: auto;
+        padding: 5px;
+        gap: 10px;
+    }
+
+    .pallet-items {
+        max-height: 250px;
+        overflow-y: auto;
+        padding-right: 5px;
+    }
+
+        /* Make scrollbars look nicer */
+        .pallet-items::-webkit-scrollbar,
+        .pallets-container::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        .pallet-items::-webkit-scrollbar-track,
+        .pallets-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        .pallet-items::-webkit-scrollbar-thumb,
+        .pallets-container::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+
+            .pallet-items::-webkit-scrollbar-thumb:hover,
+            .pallets-container::-webkit-scrollbar-thumb:hover {
+                background: #555;
+            }
+
+        .pallet-items ul li {
+            margin-bottom: 6px !important;
+            padding: 2px 0;
+        }
+
+    .receive-checkbox {
+        display: block;
+        margin: 0 auto;
+    }
+</style>
+
+<h3>Release for Finished Good: @Model.SKU - @Model.Description</h3>
+<form id="releaseForm">
+    @Html.AntiForgeryToken()
+    <table class="table table-bordered align-middle w-100">
+        <thead>
+            <tr>
+                <th style="width: 8%;">Select</th>
+                <th style="width: 20%;">Release Type</th>
+                <th style="width: 20%;">Release Date</th>
+                <th>Pallets</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var receive in Model.Receives)
+            {
+                <tr>
+                    <td class="text-center">
+                        <input type="checkbox" class="receive-checkbox" data-receive-id="@receive.Id" />
+                    </td>
+                    <td>
+                        <select class="form-select release-type" data-receive-id="@receive.Id" disabled>
+                            <option value="Partial">Partial</option>
+                            <option value="Full">Full</option>
+                        </select>
+                    </td>
+                    <td>
+                        <!-- Release date field for each receive -->
+                        <div class="receive-release-date-container" style="display: none;">
+                            <input type="date"
+                                   class="form-control receive-release-date"
+                                   data-receive-id="@receive.Id"
+                                   min="@DateTime.Now.ToString("yyyy-MM-dd")" />
+                        </div>
+                    </td>
+                    <td>
+                        <button type="button"
+                                class="btn btn-link btn-sm p-0 toggle-all-items mb-2"
+                                data-receive-id="@receive.Id"
+                                onclick="toggleAllItems(this, '@receive.Id')">
+                            Show All Items
+                        </button>
+
+                        <div class="pallets-container">
+                            @foreach (var pallet in receive.Pallets)
+                            {
+                                <div class="card p-2" style="min-width: 220px; border: 1px solid #ccc;">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <div class="form-check">
+                                            <input type="checkbox"
+                                                   class="form-check-input pallet-checkbox"
+                                                   id="pallet-@pallet.Id"
+                                                   data-receive-id="@receive.Id"
+                                                   data-pallet-id="@pallet.Id"
+                                                   data-released="@pallet.IsReleased.ToString().ToLower()"
+                                                   @(pallet.IsReleased ? "checked disabled" : "disabled") />
+                                            <label class="form-check-label" for="pallet-@pallet.Id">
+                                                <strong>@pallet.PalletCode</strong>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div class="pallet-items mt-2" style="display: none;">
+                                        <div class="card-subtitle mb-2 text-muted small">Individual Items</div>
+                                        <ul class="list-unstyled mb-0">
+                                            @foreach (var item in pallet.Items)
+                                            {
+                                                <li class="mb-2">
+                                                    <div class="form-check">
+                                                        <input type="checkbox"
+                                                               class="form-check-input item-checkbox"
+                                                               id="item-@item.Id"
+                                                               data-receive-id="@receive.Id"
+                                                               data-pallet-id="@pallet.Id"
+                                                               data-item-id="@item.Id"
+                                                               data-released="@item.IsReleased.ToString().ToLower()"
+                                                               @(item.IsReleased ? "checked disabled" : "disabled") />
+                                                        <label class="form-check-label" for="item-@item.Id">@item.ItemCode</label>
+                                                    </div>
+                                                </li>
+                                            }
+                                        </ul>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <button type="submit" class="btn btn-primary" id="releaseBtn">Release</button>
+    <div id="errorContainer" class="text-danger fw-bold" style="display:none;"></div>
+</form>
+
+<script>
+    // Direct toggle function for showing/hiding all items
+    function toggleAllItems(button, receiveId) {
+        console.log('Toggle all items clicked for receive:', receiveId);
+        const row = button.closest('tr');
+        const itemContainers = row.querySelectorAll('.pallet-items');
+
+        // Count how many are currently visible
+        let visibleCount = 0;
+        itemContainers.forEach(container => {
+            if (container.style.display === 'block') {
+                visibleCount++;
+            }
+        });
+
+        // If all are visible, hide all; otherwise show all
+        const shouldShow = visibleCount < itemContainers.length;
+
+        itemContainers.forEach(container => {
+            container.style.display = shouldShow ? 'block' : 'none';
+        });
+
+        // Update the main toggle button text
+        button.textContent = shouldShow ? 'Hide All Items' : 'Show All Items';
+
+        // Prevent form submission
+        return false;
+    }
+</script>
+
+@section Scripts {
+    <script>
+        window.finishedGoodId = '@Model.FinishedGoodId';
+    </script>
+    <script type="module" src="~/js/pages/finished-good/release-finished-good.js"></script>
+}

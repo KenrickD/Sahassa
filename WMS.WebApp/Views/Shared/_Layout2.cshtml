@@ -1,0 +1,21 @@
+﻿<!-- meta tags and other links -->
+<!DOCTYPE html>
+<html lang="en">
+
+<partial name="~/Views/Shared/Partials/_Head.cshtml" />
+
+<body class="dark:bg-neutral-800 bg-neutral-100 dark:text-white">   
+
+    @RenderBody()
+
+    <partial name="~/Views/Shared/Partials/_Scripts.cshtml" />
+
+    @* Render the script if it exists in ViewData *@
+    @if (ViewData.ContainsKey("script"))
+    {
+        @Html.Raw(ViewData["script"] as string)
+    }
+    <!-- Optional Scripts Section -->
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

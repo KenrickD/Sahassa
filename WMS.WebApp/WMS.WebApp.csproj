@@ -1,0 +1,44 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="wwwroot\images\.DS_Store" />
+    <None Include="wwwroot\scss\.DS_Store" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--<PackageReference Include="jquery" Version="3.7.1" />
+    <PackageReference Include="jszip" Version="3.10.1" />-->
+    <PackageReference Include="Microsoft.AspNetCore.SignalR" Version="1.2.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.5">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
+    <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
+    <PackageReference Include="Serilog.Enrichers.Environment" Version="3.0.1" />
+    <PackageReference Include="Serilog.Enrichers.Thread" Version="4.0.0" />
+    <PackageReference Include="Serilog.Settings.Configuration" Version="9.0.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+    <!--<PackageReference Include="pdfmake" Version="0.1.18" />-->
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WMS.Application\WMS.Application.csproj" />
+    <ProjectReference Include="..\WMS.Domain\WMS.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="logs\" />
+    <Folder Include="Models\FinishedGood\Receive\" />
+    <Folder Include="wwwroot\images\nav\" />
+    <Folder Include="wwwroot\js\pages\common\" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,31 @@
+﻿@using WMS.Domain.DTOs.GIV_RM_ReceivePalletPhoto
+@model RM_PalletPhotoViewModel
+
+<div class="modal fade show" style="display:block;" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Pallet Photos</h5>
+                <a href="#" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></a>
+            </div>
+            <div class="modal-body">
+                @if (Model.PhotoUrl?.Any() == true)
+                {
+                    <div class="row">
+                        @for (int i = 0; i < Model.PhotoUrl.Count; i++)
+                        {
+                            <div class="col-md-4 mb-4 text-center">
+                                <div class="mb-2 fw-bold">Photo @(i + 1)</div>
+                                <img src="@Model.PhotoUrl[i]" class="img-thumbnail" style="max-width: 100%; height: 200px; object-fit: cover;" alt="Pallet Photo @(i + 1)" />
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="text-center">No valid photos found.</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>

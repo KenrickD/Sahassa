@@ -1,0 +1,59 @@
+﻿using System;
+using Microsoft.EntityFrameworkCore.Migrations;
+
+#nullable disable
+
+namespace WMS.Infrastructure.Migrations
+{
+    /// <inheritdoc />
+    public partial class addmorereleaseinfo : Migration
+    {
+        /// <inheritdoc />
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.AddColumn<DateTime>(
+                name: "ActualReleaseDate",
+                table: "TB_GIV_RM_ReleaseDetails",
+                type: "timestamp with time zone",
+                nullable: true);
+
+            migrationBuilder.AddColumn<string>(
+                name: "ActualReleasedBy",
+                table: "TB_GIV_RM_ReleaseDetails",
+                type: "text",
+                nullable: true);
+
+            migrationBuilder.AddColumn<DateTime>(
+                name: "ActualReleaseDate",
+                table: "TB_GIV_FG_ReleaseDetails",
+                type: "timestamp with time zone",
+                nullable: true);
+
+            migrationBuilder.AddColumn<string>(
+                name: "ActualReleasedBy",
+                table: "TB_GIV_FG_ReleaseDetails",
+                type: "text",
+                nullable: true);
+        }
+
+        /// <inheritdoc />
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.DropColumn(
+                name: "ActualReleaseDate",
+                table: "TB_GIV_RM_ReleaseDetails");
+
+            migrationBuilder.DropColumn(
+                name: "ActualReleasedBy",
+                table: "TB_GIV_RM_ReleaseDetails");
+
+            migrationBuilder.DropColumn(
+                name: "ActualReleaseDate",
+                table: "TB_GIV_FG_ReleaseDetails");
+
+            migrationBuilder.DropColumn(
+                name: "ActualReleasedBy",
+                table: "TB_GIV_FG_ReleaseDetails");
+        }
+    }
+}

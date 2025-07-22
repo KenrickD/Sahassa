@@ -1,0 +1,41 @@
+﻿@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+@{
+}
+@model IList<WMS.Domain.DTOs.GIV_FinishedGood.FinishedGoodDetailsDto>
+<div class="table-responsive">
+<table class="table table-hover w-100" id="FGDataTableFilter">
+    <thead>
+        <tr>
+            <th title="SKU">SKU</th>
+            <th title="DESCRIPTION">DESCRIPTION</th>
+            <th title="TOTAL BALANCE QTY">TOTAL BAL QTY</th>
+            <th title="TOTAL BALANCE PALLET">TOTAL BAL PLT</th>
+                <th title="RELEASE">RELEASE</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr data-row-id="@item.Id" data-url="@Url.Action("Details", "FinishedGood", new { id = item.Id })" class="clickable-row">
+                <td >
+                    @item.SKU
+                </td>
+                <td >
+                    @item.Description
+                </td>
+                <td >
+                    @item.TotalBalanceQty
+                </td>
+                <td >
+                    @item.TotalBalancePallet
+                </td>
+                    <td><a asp-controller="FinishedGood" asp-action="Release" asp-route-finishedgoodId="@item.Id" class="btn btn-sm btn-primary">Release</a></td>
+
+            </tr>
+        }
+
+    </tbody>
+</table>
+</div>

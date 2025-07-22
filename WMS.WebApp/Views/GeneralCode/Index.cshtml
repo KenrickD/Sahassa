@@ -1,0 +1,231 @@
+﻿@model WMS.WebApp.Models.GeneralCodes.GeneralCodeListViewModel
+
+@{
+    ViewData["Title"] = "General Codes";
+    ViewData["subTitle"] = "Code Management";
+}
+
+<div class="grid grid-cols-12 gap-6">
+    <!-- Statistics Cards -->
+    <div class="col-span-12">
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="card shadow-none border border-gray-200 dark:border-neutral-600 dark:bg-neutral-700 rounded-lg h-full bg-gradient-to-r from-blue-600/10 to-bg-white">
+                <div class="card-body p-4">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <p class="font-medium text-neutral-900 dark:text-white mb-1 text-sm">Code Types</p>
+                            <h6 class="mb-0 dark:text-white text-xl" id="code-types-count">0</h6>
+                        </div>
+                        <div class="w-10 h-10 bg-blue-600 rounded-full flex justify-center items-center">
+                            <iconify-icon icon="solar:layers-outline" class="text-white text-lg mb-0"></iconify-icon>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-none border border-gray-200 dark:border-neutral-600 dark:bg-neutral-700 rounded-lg h-full bg-gradient-to-r from-green-600/10 to-bg-white">
+                <div class="card-body p-4">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <p class="font-medium text-neutral-900 dark:text-white mb-1 text-sm">Total Codes</p>
+                            <h6 class="mb-0 dark:text-white text-xl" id="total-codes-count">0</h6>
+                        </div>
+                        <div class="w-10 h-10 bg-green-600 rounded-full flex justify-center items-center">
+                            <iconify-icon icon="solar:code-outline" class="text-white text-lg mb-0"></iconify-icon>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        @*     <div class="card shadow-none border border-gray-200 dark:border-neutral-600 dark:bg-neutral-700 rounded-lg h-full bg-gradient-to-r from-yellow-600/10 to-bg-white">
+                <div class="card-body p-4">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <p class="font-medium text-neutral-900 dark:text-white mb-1 text-sm">Warehouse</p>
+                            <h6 class="mb-0 dark:text-white text-base" id="current-warehouse">Loading...</h6>
+                        </div>
+                        <div class="w-10 h-10 bg-yellow-600 rounded-full flex justify-center items-center">
+                            <iconify-icon icon="solar:buildings-outline" class="text-white text-lg mb-0"></iconify-icon>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-none border border-gray-200 dark:border-neutral-600 dark:bg-neutral-700 rounded-lg h-full bg-gradient-to-r from-purple-600/10 to-bg-white">
+                <div class="card-body p-4">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <p class="font-medium text-neutral-900 dark:text-white mb-1 text-sm">Last Updated</p>
+                            <h6 class="mb-0 dark:text-white text-sm" id="last-updated">Just now</h6>
+                        </div>
+                        <div class="w-10 h-10 bg-purple-600 rounded-full flex justify-center items-center">
+                            <iconify-icon icon="solar:clock-circle-outline" class="text-white text-lg mb-0"></iconify-icon>
+                        </div>
+                    </div>
+                </div>
+            </div> *@
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="col-span-12">
+        <div class="card border-0 overflow-hidden">
+            <div class="card-header flex items-center justify-between">
+                <h6 class="card-title mb-0 text-lg">General Codes Management</h6>
+                <div class="flex items-center gap-3">
+                    <button id="refresh-data" class="btn bg-neutral-200 dark:bg-neutral-600 text-neutral-700 dark:text-neutral-300 text-sm btn-sm px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-neutral-300 dark:hover:bg-neutral-500">
+                        <iconify-icon icon="solar:refresh-outline" class="text-lg"></iconify-icon>
+                        Refresh
+                    </button>
+                    <a asp-action="CreateCodeType" asp-controller="GeneralCode" asp-authorize-permission="GeneralCode.Write" class="btn btn-primary text-sm btn-sm px-3 py-3 rounded-lg flex items-center gap-2">
+                        <iconify-icon icon="ic:baseline-plus" class="icon text-xl line-height-1"></iconify-icon>
+                        Add Code Type
+                    </a>
+                </div>
+            </div>
+
+            <div class="card-body p-0">
+                <!-- Search and Filter Bar -->
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-neutral-600 bg-gray-50 dark:bg-neutral-800">
+                    <div class="flex flex-wrap items-center gap-4">
+                        <div class="flex-1 min-w-64">
+                            <div class="relative">
+                                <input type="text" id="search-input" placeholder="Search code types and codes..."
+                                       class="form-control w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-neutral-700">
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button id="expand-all" class="btn bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 text-sm px-3 py-2 rounded-lg flex items-center gap-2">
+                                <iconify-icon icon="solar:maximize-outline" class="text-lg"></iconify-icon>
+                                Expand All
+                            </button>
+                            <button id="collapse-all" class="btn bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 text-sm px-3 py-2 rounded-lg flex items-center gap-2">
+                                <iconify-icon icon="solar:minimize-outline" class="text-lg"></iconify-icon>
+                                Collapse All
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hierarchical Data Container -->
+                <div id="general-codes-container" class="p-6">
+                    <div id="loading-spinner" class="flex items-center justify-center py-12">
+                        <div class="text-center">
+                            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                            <p class="text-gray-500 mt-2">Loading general codes...</p>
+                        </div>
+                    </div>
+
+                    <div id="no-data-message" class="hidden text-center py-12">
+                        <div class="text-gray-400 dark:text-gray-500">
+                            <iconify-icon icon="solar:folder-open-outline" class="text-6xl mb-4"></iconify-icon>
+                            <h3 class="text-lg font-medium mb-2">No Code Types Found</h3>
+                            <p class="text-sm">Create your first code type to get started.</p>
+                        </div>
+                    </div>
+
+                    <div id="codes-data-container">
+                        <!-- Dynamic content will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Code Modal -->
+<div id="add-code-modal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onclick="closeAddCodeModal()"></div>
+
+        <div class="inline-block w-full max-w-md p-6 my-8 text-left align-middle transition-all transform bg-white dark:bg-neutral-800 shadow-xl rounded-2xl">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white">Add New Code</h3>
+                <button type="button" onclick="closeAddCodeModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                    <iconify-icon icon="solar:close-circle-outline" class="text-xl"></iconify-icon>
+                </button>
+            </div>
+
+            <form id="add-code-form">
+                <input type="hidden" id="modal-code-type-id" />
+                <input type="hidden" id="modal-warehouse-id" />
+
+                <div class="mb-4">
+                    <label class="form-label">Code Name <span class="text-red-500">*</span></label>
+                    <input type="text" id="modal-code-name" class="form-control" placeholder="Enter code name" required>
+                    <div class="text-red-500 text-sm mt-1 hidden" id="modal-name-error"></div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label">Detail/Description</label>
+                    <textarea id="modal-code-detail" class="form-control" rows="3" placeholder="Enter code description (optional)"></textarea>
+                </div>
+
+                <div class="mb-6">
+                    <label class="form-label">Sequence</label>
+                    <input type="number" id="modal-code-sequence" class="form-control" min="1" value="1">
+                    <small class="text-gray-500">Order position for this code</small>
+                </div>
+
+                <div class="flex justify-end gap-3">
+                    <button type="button" onclick="closeAddCodeModal()" class="btn bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary px-4 py-2 rounded-lg">
+                        Add Code
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Code Modal -->
+<div id="edit-code-modal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onclick="closeEditCodeModal()"></div>
+
+        <div class="inline-block w-full max-w-md p-6 my-8 text-left align-middle transition-all transform bg-white dark:bg-neutral-800 shadow-xl rounded-2xl">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white">Edit Code</h3>
+                <button type="button" onclick="closeEditCodeModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                    <iconify-icon icon="solar:close-circle-outline" class="text-xl"></iconify-icon>
+                </button>
+            </div>
+
+            <form id="edit-code-form">
+                <input type="hidden" id="edit-modal-code-id" />
+
+                <div class="mb-4">
+                    <label class="form-label">Code Name <span class="text-red-500">*</span></label>
+                    <input type="text" id="edit-modal-code-name" class="form-control" placeholder="Enter code name" required>
+                    <div class="text-red-500 text-sm mt-1 hidden" id="edit-modal-name-error"></div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label">Detail/Description</label>
+                    <textarea id="edit-modal-code-detail" class="form-control" rows="3" placeholder="Enter code description (optional)"></textarea>
+                </div>
+
+                <div class="mb-6">
+                    <label class="form-label">Sequence</label>
+                    <input type="number" id="edit-modal-code-sequence" class="form-control" min="1" value="1">
+                    <small class="text-gray-500">Order position for this code</small>
+                </div>
+
+                <div class="flex justify-end gap-3">
+                    <button type="button" onclick="closeEditCodeModal()" class="btn bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary px-4 py-2 rounded-lg">
+                        Update Code
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/pages/general-codes/list.js" asp-append-version="true"></script>
+}

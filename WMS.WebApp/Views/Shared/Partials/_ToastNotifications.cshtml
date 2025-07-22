@@ -1,0 +1,28 @@
+﻿@if (TempData["Toast"] != null)
+{
+    var toastData = (string)TempData["Toast"];
+    var toastParts = toastData.Split(':', 2);
+    var toastType = toastParts[0];
+    var toastMessage = toastParts.Length > 1 ? toastParts[1] : "Operation completed";
+
+    <script>
+        $(document).ready(function() {
+        @if (toastType == "success")
+        {
+            <text>showSuccessToast('@Html.Raw(toastMessage)');</text>
+        }
+        else if (toastType == "error")
+        {
+            <text>showErrorToast('@Html.Raw(toastMessage)');</text>
+        }
+        else if (toastType == "warning")
+        {
+            <text>showWarningToast('@Html.Raw(toastMessage)');</text>
+        }
+        else if (toastType == "info")
+        {
+            <text>showInfoToast('@Html.Raw(toastMessage)');</text>
+        }
+        });
+    </script>
+}

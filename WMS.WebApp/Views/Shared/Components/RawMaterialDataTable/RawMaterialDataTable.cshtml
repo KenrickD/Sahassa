@@ -1,0 +1,34 @@
+﻿@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+@{
+}
+@model IList<WMS.Domain.DTOs.GIV_RawMaterial.RawMaterialDetailsDto>
+<div class="table-responsive">
+    <table class="table table-hover w-100" id="PNInventoryDataTableFilter">
+        <thead>
+            <tr>
+                <th title="MATERIAL NO">MATERIAL NO</th>
+                <th title="DESCRIPTION">DESCRIPTION</th>
+                <th title="TOTAL BAL QTY">TOTAL BAL QTY</th>
+                <th title="TOTAL BAL PLT">TOTAL BAL PLT</th>
+                <th title="RELEASE">RELEASE</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr data-row-id="@item.Id" data-url="@Url.Action("Details", "RawMaterial", new { id = item.Id })" class="clickable-row">
+                    <td>@item.MaterialNo</td>
+                    <td>@item.Description</td>
+                    <td>@item.TotalBalanceQty</td>
+                    <td>@item.TotalBalancePallet</td>
+                    <td><a asp-controller="RawMaterial" asp-action="Release" asp-route-rawmaterialId="@item.Id" class="btn btn-sm btn-primary" >Release</a></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+
+
