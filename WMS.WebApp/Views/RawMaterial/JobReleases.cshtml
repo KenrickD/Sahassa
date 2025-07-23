@@ -44,7 +44,7 @@
                     <th>Total Pallets</th>
                     <th>Total Items</th>
                     <th>Job Status</th>
-                    <th>Completion %</th>
+                    @* <th>Completion %</th> *@
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -187,6 +187,20 @@
     .dark .dataTables_wrapper .dataTables_paginate {
         color: #e5e7eb;
     }
+
+    .status-due {
+        background-color: #fdf4ff;
+        color: #a21caf;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .dark .status-due {
+        background-color: rgba(162, 28, 175, 0.2);
+        color: #e879f9;
+    }
 </style>
 
 @section Scripts {
@@ -257,19 +271,19 @@
                             return `<span class="${statusClass}">${data}</span>`;
                         }
                     },
-                    {
-                        data: 'completionPercentage',
-                        render: function(data, type, row) {
-                            const percentage = Math.round(data);
-                            return `
-                                <div class="progress">
-                                    <div class="progress-bar" style="width: ${percentage}%">
-                                        ${percentage}%
-                                    </div>
-                                </div>
-                            `;
-                        }
-                    },
+                    // {
+                    //     data: 'completionPercentage',
+                    //     render: function(data, type, row) {
+                    //         const percentage = Math.round(data);
+                    //         return `
+                    //             <div class="progress">
+                    //                 <div class="progress-bar" style="width: ${percentage}%">
+                    //                     ${percentage}%
+                    //                 </div>
+                    //             </div>
+                    //         `;
+                    //     }
+                    // },
                     {
                         data: null,
                         orderable: false,
@@ -310,7 +324,7 @@
             });
         }
 
-        function getJobStatusClass(status) {
+                function getJobStatusClass(status) {
             switch (status.toLowerCase()) {
                 case 'scheduled':
                     return 'status-scheduled';
@@ -320,6 +334,8 @@
                     return 'status-completed';
                 case 'overdue':
                     return 'status-overdue';
+                case 'due for release': 
+                    return 'status-due';
                 default:
                     return 'status-scheduled';
             }

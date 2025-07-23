@@ -2,12 +2,14 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using WMS.Application.Interfaces;
+using WMS.Application.Services;
 using WMS.Domain.DTOs.Auth;
 using WMS.Domain.DTOs.Common;
 using WMS.Domain.DTOs.GIV_FG_Receive;
 using WMS.Domain.DTOs.GIV_FG_ReceivePallet;
 using WMS.Domain.DTOs.GIV_FG_ReceivePalletPhoto;
 using WMS.Domain.DTOs.GIV_FinishedGood;
+using WMS.Domain.DTOs.GIV_Invoicing;
 using WMS.Domain.DTOs.GIV_RM_ReceivePallet;
 using static WMS.Application.Helpers.WhatsappHelper;
 
@@ -57,6 +59,38 @@ namespace WMS.API.Controllers
                 return BadRequest(result);
             }
         }
+
+        [HttpGet]
+        [Route("GetGroupedPalletCount")]
+        [Authorize]
+        [EnableRateLimiting("AuthPolicy")]
+        [ProducesResponseType(typeof(ApiResponseDto<List<GroupedPalletCountDto>>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponseDto<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponseDto<object>), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ApiResponseDto<object>), StatusCodes.Status429TooManyRequests)]
+        [ProducesResponseType(typeof(ApiResponseDto<object>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ApiResponseDto<object>), StatusCodes.Status409Conflict)]
+        [ProducesResponseType(typeof(ApiResponseDto<object>), StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(typeof(ApiResponseDto<object>), StatusCodes.Status408RequestTimeout)]
+        public async Task<IActionResult> GetGroupedPalletCount(string dateString)
+        {
+            try
+            {
+                string format = "dd-MM-yyyy HH:mm:ss";
+                DateTime cutoffDate = DateTime.ParseExact(dateString, format, System.Globalization.CultureInfo.InvariantCulture);
+                cutoffDate = DateTime.SpecifyKind(cutoffDate, DateTimeKind.Utc);
+                var result = await FinishedGoodService.GetGroupedPalletCount(cutoffDate);
+                var response = ApiResponseDto<List<GroupedPalletCountDto>>.SuccessResult(result);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get grouped pallet count.");
+                var errorResponse = ApiResponseDto<List<GroupedPalletCountDto>>.ErrorResult("Failed to get grouped pallet count.", new List<string> { ex.Message });
+                return StatusCode(500, errorResponse);
+            }
+        }
+
         /// <summary>
         /// Update Finished Good Pallet Location
         /// </summary>
@@ -66,6 +100,6 @@ namespace WMS.API.Controllers
         /// <response code="404">Data Not Found</response>
         /// <response code="409">Operation Not Allowed</response>
         /// <response code="500">Uncaught Exception</response>
-        
+
     }
 }

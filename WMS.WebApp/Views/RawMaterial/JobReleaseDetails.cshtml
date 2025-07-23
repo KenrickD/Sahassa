@@ -44,11 +44,11 @@
         <div class="text-2xl font-bold text-purple-800 dark:text-purple-200">@Model.TotalItems</div>
         <div class="text-xs text-purple-600 dark:text-purple-400 mt-1">Individual Items</div>
     </div>
-    <div class="card p-4 text-center bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800">
+   @*  <div class="card p-4 text-center bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800">
         <h5 class="text-orange-700 dark:text-orange-300 text-sm font-medium mb-2">Completion</h5>
         <div class="text-2xl font-bold text-orange-800 dark:text-orange-200">@Model.CompletionDisplay</div>
         <div class="text-xs text-orange-600 dark:text-orange-400 mt-1">Progress</div>
-    </div>
+    </div> *@
     <div class="card p-4 text-center bg-gray-50 dark:bg-gray-900/20 border-gray-200 dark:border-gray-800">
         <h5 class="text-gray-700 dark:text-gray-300 text-sm font-medium mb-2">Status</h5>
         <div class="text-lg font-bold">
@@ -59,7 +59,7 @@
 </div>
 
 <!-- Progress Bar -->
-<div class="card p-4 mb-6">
+@* <div class="card p-4 mb-6">
     <h5 class="mb-3">Job Progress</h5>
     <div class="progress-container">
         <div class="progress-bar-large">
@@ -73,7 +73,7 @@
             <span>Finished</span>
         </div>
     </div>
-</div>
+</div> *@
 
 <!-- Individual Releases in Job -->
 <div class="card">
@@ -149,6 +149,19 @@
         font-weight: 500;
     }
 
+    .status-due {
+        background-color: #fdf4ff;
+        color: #a21caf;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .dark .status-due {
+        background-color: rgba(162, 28, 175, 0.2);
+        color: #e879f9;
+    }
     .status-in-progress {
         background-color: #fef3c7;
         color: #92400e;

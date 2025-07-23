@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using Serilog;
@@ -86,6 +87,17 @@ namespace WMS.WebAPI
                 builder.Services.AddHttpsServices();
                 builder.Services.AddHttpClient();
                 builder.Services.AddMemoryCache();
+
+                builder.Services.Configure<FormOptions>(options =>
+                {
+                    options.ValueCountLimit = 5000;                    // Increase from default 1024
+                    options.MultipartBodyLengthLimit = 268435456;      // 256MB for large requests with photos
+                    options.KeyLengthLimit = 2048;                     // Longer field names (receivingDtos[0].Pallets[0].Items[0]....)
+                    options.ValueLengthLimit = 1024 * 1024;            // 1MB per field value
+                    options.MultipartHeadersLengthLimit = 16384;       // Larger headers for complex requests
+                    options.MultipartBoundaryLengthLimit = 128;        // Boundary length
+                });
+
                 //Add Services
                 builder.Services.AddAutoMapper(typeof(DtoAutoMapperProfile));
                 builder.Services.AddScoped<IRawMaterialService, RawMaterialService>();
@@ -195,6 +207,8 @@ namespace WMS.WebAPI
                 app.UseMiddleware<RequestLoggingMiddleware>();
                 app.UseMiddleware<SecurityHeadersMiddleware>();
                 app.UseMiddleware<GlobalExceptionMiddleware>();
+                // only enable for production critical debugging.
+                //app.UseMiddleware<RequestCaptureMiddleware>();
 
                 //app.UseCors("ApiCorsPolicy");
                 app.UseRateLimiter();

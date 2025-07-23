@@ -241,7 +241,7 @@ namespace WMS.Application.Services
             var query = _dbContext.GIV_Containers
                 .Include(p => p.Status)
                 .AsNoTracking()
-                .Where(x => !x.IsDeleted && x.Status != null && x.Status.Name != ContainerStatusCode.Cancelled);
+                .Where(x => !x.IsDeleted && x.Status != null && x.Status.Name != ContainerStatusCode.Cancelled && x.ProcessType == ContainerProcessType.Import);
 
             // Apply database search only
             if (!string.IsNullOrWhiteSpace(searchTerm))
@@ -355,21 +355,8 @@ namespace WMS.Application.Services
 
                 if (jobId != 0)
                 {
-                    if (jobType.Contains("NonHSC"))
-                    {
-                        requestDtos.FirstOrDefault(x => x.JobType == GivaudanJobTye.IMPORT_NONHSC)?.JobIds.Add(jobId);
-                        jobImportNonHSCIdSet.Add(jobId);
-                    }
-                    else if (jobType.Contains("CEVA"))
-                    {
-                        requestDtos.FirstOrDefault(x => x.JobType == GivaudanJobTye.IMPORT_CEVA)?.JobIds.Add(jobId);
-                        jobImportCEVAIdSet.Add(jobId);
-                    }
-                    else
-                    {
-                        requestDtos.FirstOrDefault(x => x.JobType == GivaudanJobTye.IMPORT)?.JobIds.Add(jobId);
-                        jobIdSet.Add(jobId);
-                    }
+                    requestDtos.FirstOrDefault(x => x.JobType == jobType)?.JobIds.Add(jobId);
+
                     container.JobType = jobType;
                 }
             }

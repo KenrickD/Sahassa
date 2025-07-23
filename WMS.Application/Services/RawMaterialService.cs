@@ -3632,6 +3632,7 @@ namespace WMS.Application.Services
                 .Skip(start)
                 .Take(length)
                 .ToListAsync();
+            var now = DateTime.UtcNow;
 
             // Transform to DTOs
             var individualReleaseDtos = new List<JobReleaseIndividualReleaseDto>();
@@ -3644,7 +3645,7 @@ namespace WMS.Application.Services
 
                 var status = release.ActualReleaseDate.HasValue ? "Completed" :
                             (details.Any(d => d.ActualReleaseDate.HasValue) ? "Partially Released" :
-                            (release.ReleaseDate.Date <= DateTime.UtcNow.Date ? "Due for Release" : "Scheduled"));
+                            (IsPastNoonOnReleaseDate(release.ReleaseDate, now) ? "Due for Release" : "Scheduled"));
 
                 var dto = new JobReleaseIndividualReleaseDto
                 {
@@ -3671,11 +3672,30 @@ namespace WMS.Application.Services
         }
 
         // Helper methods for status determination
+        private bool IsPastNoonOnReleaseDate(DateTime releaseDate, DateTime currentTime)
+        {
+            var noonOnReleaseDate = releaseDate.Date.AddHours(12);
+
+            return currentTime >= noonOnReleaseDate;
+        }
         private string GetJobStatus(List<GIV_RM_Release> releases, DateTime plannedReleaseDate)
         {
             var completedCount = releases.Count(r => r.ActualReleaseDate.HasValue);
             var totalCount = releases.Count;
-            var hasOverdue = releases.Any(r => !r.ActualReleaseDate.HasValue && r.ReleaseDate.Date < DateTime.UtcNow.Date);
+            var now = DateTime.UtcNow;
+
+            var hasOverdue = releases.Any(r =>
+                !r.ActualReleaseDate.HasValue &&
+                IsPastNoonOnReleaseDate(r.ReleaseDate, now)
+            );
+
+            var hasPartialReleases = releases.Any(r =>
+                !r.ActualReleaseDate.HasValue && 
+                r.GIV_RM_ReleaseDetails.Any(d =>
+                    !d.IsDeleted &&
+                    d.ActualReleaseDate.HasValue 
+                )
+            );
 
             if (completedCount == totalCount)
                 return "Completed";
@@ -3683,8 +3703,11 @@ namespace WMS.Application.Services
             if (hasOverdue)
                 return "Overdue";
 
-            if (completedCount > 0)
+            if (completedCount > 0 || hasPartialReleases)
                 return "In Progress";
+
+            if (plannedReleaseDate.Date <= DateTime.UtcNow.Date)
+                return "Due for Release";
 
             return "Scheduled";
         }
@@ -3696,6 +3719,8 @@ namespace WMS.Application.Services
                 "completed" => "status-completed",
                 "in progress" => "status-in-progress",
                 "overdue" => "status-overdue",
+                "due for release" => "status-due", // Add missing case
+                "scheduled" => "status-scheduled",
                 _ => "status-scheduled"
             };
         }
@@ -3704,10 +3729,11 @@ namespace WMS.Application.Services
         {
             return status.ToLower() switch
             {
-                "completed" => "text-success",
-                "partially released" => "text-warning",
-                "due for release" => "text-danger",
-                _ => "text-info"
+                "completed" => "status-completed",
+                "partially released" => "status-in-progress", 
+                "due for release" => "status-due",
+                "scheduled" => "status-scheduled",
+                _ => "status-scheduled"
             };
         }
         public async Task<(byte[] fileContent, string fileName)> ExportJobReleaseToExcelAsync(Guid jobId)

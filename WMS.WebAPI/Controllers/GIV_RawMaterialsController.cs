@@ -7,8 +7,10 @@ using WMS.Application.Interfaces;
 using WMS.Application.Services;
 using WMS.Domain.DTOs.Auth;
 using WMS.Domain.DTOs.Common;
+using WMS.Domain.DTOs.GeneralCodes;
 using WMS.Domain.DTOs.GIV_Container;
 using WMS.Domain.DTOs.GIV_FG_ReceivePallet;
+using WMS.Domain.DTOs.GIV_Invoicing;
 using WMS.Domain.DTOs.GIV_RM_Receive;
 using WMS.Domain.DTOs.GIV_RM_ReceivePallet;
 using WMS.Domain.DTOs.GIV_RM_ReceivePalletPhoto;
@@ -64,7 +66,7 @@ namespace WMS.API.Controllers
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
                 ReferenceHandler = ReferenceHandler.IgnoreCycles
             });
-            _logger.LogInformation("[{Timestamp}] RawMaterialCreateDto JSON: {DtoJson}", DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff UTC"), dtoJson);
+            //_logger.LogInformation("[{Timestamp}] RawMaterialCreateDto JSON: {DtoJson}", DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff UTC"), dtoJson);
             var result = await RawMaterialService.CreateRawMaterialAsync(receivingdto,photos,Username,warehouseid);
             if (result.Success)
             {
@@ -76,7 +78,40 @@ namespace WMS.API.Controllers
                 return BadRequest(result);
             }
         }
-        
+
+
+        [HttpGet]
+        [Route("GetGroupedPalletCount")]
+        [Authorize]
+        [EnableRateLimiting("AuthPolicy")]
+        [ProducesResponseType(typeof(ApiResponseDto<List<GroupedPalletCountDto>>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponseDto<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponseDto<object>), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ApiResponseDto<object>), StatusCodes.Status429TooManyRequests)]
+        [ProducesResponseType(typeof(ApiResponseDto<object>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ApiResponseDto<object>), StatusCodes.Status409Conflict)]
+        [ProducesResponseType(typeof(ApiResponseDto<object>), StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(typeof(ApiResponseDto<object>), StatusCodes.Status408RequestTimeout)]
+        public async Task<IActionResult> GetGroupedPalletCount(string dateString)
+        {
+            try
+            {
+                string format = "dd-MM-yyyy HH:mm:ss";
+                DateTime cutoffDate = DateTime.ParseExact(dateString, format, System.Globalization.CultureInfo.InvariantCulture);
+                cutoffDate = DateTime.SpecifyKind(cutoffDate, DateTimeKind.Utc);
+
+                var result = await RawMaterialService.GetGroupedPalletCount(cutoffDate);
+                var response = ApiResponseDto<List<GroupedPalletCountDto>>.SuccessResult(result);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get grouped pallet count.");
+                var errorResponse = ApiResponseDto<List<GroupedPalletCountDto>>.ErrorResult("Failed to get grouped pallet count.", new List<string> { ex.Message });
+                return StatusCode(500, errorResponse);
+            }
+        }
+
 
     }
 }

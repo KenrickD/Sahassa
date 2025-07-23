@@ -2245,7 +2245,7 @@ namespace WMS.Application.Services
                 .Skip(start)
                 .Take(length)
                 .ToListAsync();
-
+            var now = DateTime.UtcNow;
             // Transform to DTOs
             var individualReleaseDtos = new List<JobReleaseIndividualReleaseDto>();
 
@@ -2257,7 +2257,7 @@ namespace WMS.Application.Services
 
                 var status = release.ActualReleaseDate.HasValue ? "Completed" :
                             (details.Any(d => d.ActualReleaseDate.HasValue) ? "Partially Released" :
-                            (release.ReleaseDate.Date <= DateTime.UtcNow.Date ? "Due for Release" : "Scheduled"));
+                            (IsPastNoonOnReleaseDate(release.ReleaseDate, now) ? "Due for Release" : "Scheduled"));
 
                 var dto = new JobReleaseIndividualReleaseDto
                 {
@@ -2599,12 +2599,30 @@ namespace WMS.Application.Services
         #endregion
 
         #region Helper Methods
+        private bool IsPastNoonOnReleaseDate(DateTime releaseDate, DateTime currentTime)
+        {
+            var noonOnReleaseDate = releaseDate.Date.AddHours(12);
 
+            return currentTime >= noonOnReleaseDate;
+        }
         private string GetJobStatus(List<GIV_FG_Release> releases, DateTime plannedReleaseDate)
         {
             var completedCount = releases.Count(r => r.ActualReleaseDate.HasValue);
             var totalCount = releases.Count;
-            var hasOverdue = releases.Any(r => !r.ActualReleaseDate.HasValue && r.ReleaseDate.Date < DateTime.UtcNow.Date);
+            var now = DateTime.UtcNow;
+
+            var hasOverdue = releases.Any(r =>
+                !r.ActualReleaseDate.HasValue &&
+                IsPastNoonOnReleaseDate(r.ReleaseDate, now)
+            );
+
+            var hasPartialReleases = releases.Any(r =>
+                !r.ActualReleaseDate.HasValue && 
+                r.GIV_FG_ReleaseDetails.Any(d =>
+                    !d.IsDeleted &&
+                    d.ActualReleaseDate.HasValue 
+                )
+            );
 
             if (completedCount == totalCount)
                 return "Completed";
@@ -2612,7 +2630,7 @@ namespace WMS.Application.Services
             if (hasOverdue)
                 return "Overdue";
 
-            if (completedCount > 0)
+            if (completedCount > 0 || hasPartialReleases)
                 return "In Progress";
 
             if (plannedReleaseDate.Date <= DateTime.UtcNow.Date)
