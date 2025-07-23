@@ -2,7 +2,7 @@
 let selectedMaterials = new Set();
 let availableMaterials = [];
 let jobReleaseConfig = {};
-
+let globalConflictData = {};
 $(document).ready(function () {
     initializeCreateJobRelease();
 });
@@ -272,12 +272,103 @@ function renderMaterialConfigurations(materialsData) {
     const container = document.getElementById('selected-materials-container');
     container.innerHTML = '';
 
+    console.log('Rendering', materialsData.length, 'material configurations...');
+
     materialsData.forEach(function (material) {
         const materialCard = createMaterialConfigCard(material);
         container.appendChild(materialCard);
     });
-}
 
+    // Wait for DOM to be fully rendered, then check conflicts for all materials
+    setTimeout(() => {
+        console.log('Starting conflict check for all materials after DOM rendering...');
+        checkConflictsForAllMaterials(materialsData);
+    }, 1500); // Longer delay to ensure everything is rendered
+}
+function checkConflictsForAllMaterials(materialsData) {
+    console.log('🔄 Starting conflict checks for all materials...');
+
+    // First, expand all item lists to make sure DOM is ready
+    setTimeout(() => {
+        console.log('📂 Expanding all item lists first...');
+        const toggleButtons = document.querySelectorAll('.toggle-all-items');
+        toggleButtons.forEach(button => {
+            if (button.textContent.includes('Show')) {
+                button.click();
+            }
+        });
+
+        // Then wait a bit more and start conflict checking
+        setTimeout(() => {
+            console.log('🔍 Starting conflict checks...');
+            const promises = materialsData.map(material => {
+                console.log('Checking conflicts for material:', material.id, '-', material.materialNo);
+                return checkReleaseConflictsForMaterial(material.id);
+            });
+
+            Promise.all(promises).then(() => {
+                console.log('✅ All conflict checks completed');
+                showConflictLegend();
+            }).catch(error => {
+                console.error('❌ Error in batch conflict checking:', error);
+            });
+        }, 1000);
+    }, 500);
+}
+async function checkBatchMaterialConflicts(materialsData) {
+    try {
+        const materialIds = materialsData.map(material => material.id);
+        console.log('🚀 Checking conflicts for materials:', materialIds);
+
+        const response = await fetch('/RawMaterial/CheckBatchMaterialReleaseConflicts', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': $('input[name="__RequestVerificationToken"]').val(),
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ materialIds: materialIds })
+        });
+
+        if (!response.ok) {
+            console.error('❌ Batch conflict request failed:', response.status);
+            return;
+        }
+
+        const data = await response.json();
+
+        if (data.success && data.conflicts) {
+            console.log('✅ Batch conflict check completed successfully');
+
+            // Store conflict data and apply visual indicators for all materials
+            let totalConflicts = 0;
+            Object.keys(data.conflicts).forEach(materialId => {
+                const materialConflicts = data.conflicts[materialId];
+                globalConflictData[materialId] = materialConflicts;
+
+                const palletConflictCount = Object.keys(materialConflicts.pallets || {}).length;
+                const itemConflictCount = Object.keys(materialConflicts.items || {}).length;
+
+                if (palletConflictCount > 0 || itemConflictCount > 0) {
+                    console.log(`🔥 Material ${materialId}: ${palletConflictCount} pallet conflicts, ${itemConflictCount} item conflicts`);
+                    totalConflicts += palletConflictCount + itemConflictCount;
+
+                    // Apply visual indicators
+                    applyVisualConflictIndicators(materialId);
+                }
+            });
+
+            if (totalConflicts > 0) {
+                console.log(`🚨 Total conflicts found: ${totalConflicts}`);
+                showConflictLegend();
+            } else {
+                console.log('✅ No conflicts found across all materials');
+            }
+        }
+    } catch (error) {
+        console.error('💥 Error in batch conflict check:', error);
+    }
+}
 function createMaterialConfigCard(material) {
     const cardDiv = document.createElement('div');
     cardDiv.className = 'material-config-card';
@@ -307,9 +398,12 @@ function createMaterialConfigCard(material) {
     // Add event listeners
     const includeCheckbox = cardDiv.querySelector('.material-include-checkbox');
     includeCheckbox.addEventListener('change', function () {
-        toggleMaterialInclusion(material.id, this.checked);
+        const content = cardDiv.querySelector('.material-config-content');
+        content.style.display = this.checked ? 'block' : 'none';
+        updateStep2Buttons();
     });
 
+    // Don't check conflicts here - we'll do it later in batch
     return cardDiv;
 }
 
@@ -388,7 +482,7 @@ function createPalletCard(materialId, receiveId, pallet) {
                            data-pallet-id="${pallet.id}"
                            data-released="${pallet.isReleased.toString().toLowerCase()}"
                            ${pallet.isReleased ? 'checked disabled' : 'disabled'}>
-                    <label class="form-check-label" for="pallet-${pallet.id}">
+                    <label class="form-check-label pallet-code-label" for="pallet-${pallet.id}">
                         <strong>${pallet.palletCode}</strong>
                     </label>
                 </div>
@@ -415,7 +509,9 @@ function createItemCheckbox(materialId, receiveId, palletId, item) {
                        data-item-id="${item.id}"
                        data-released="${item.isReleased.toString().toLowerCase()}"
                        ${item.isReleased ? 'checked disabled' : 'disabled'}>
-                <label class="form-check-label" for="item-${item.id}">${item.itemCode}</label>
+                <label class="form-check-label item-code-label" for="item-${item.id}">
+                    ${item.itemCode || 'No Code'}
+                </label>
             </div>
         </li>
     `;
@@ -636,7 +732,16 @@ function toggleAllItemsForReceive(button) {
     });
 
     button.textContent = shouldShow ? 'Hide All Items' : 'Show All Items';
+
+    // If we're showing items, retry conflict checking for this material
+    if (shouldShow) {
+        setTimeout(() => {
+            retryConflictCheckForMaterial(materialId);
+        }, 100);
+    }
 }
+
+
 
 function toggleMaterialInclusion(materialId, isIncluded) {
     const content = document.getElementById('content-' + materialId);
@@ -1124,4 +1229,215 @@ function showJobReleaseConflicts(conflicts) {
         behavior: 'smooth',
         block: 'start'
     });
+}
+// Function to check for release conflicts in real-time
+async function checkReleaseConflictsForMaterial(materialId) {
+    console.log('⚠️ Using deprecated single material conflict check. Consider using batch method.');
+
+    try {
+        const response = await fetch('/RawMaterial/CheckMaterialReleaseConflicts', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': $('input[name="__RequestVerificationToken"]').val(),
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ materialId: materialId })
+        });
+
+        if (!response.ok) {
+            console.error('❌ Request failed:', response.status);
+            return;
+        }
+
+        const data = await response.json();
+
+        if (data.success && data.conflicts) {
+            globalConflictData[materialId] = data.conflicts;
+
+            const palletConflictCount = Object.keys(data.conflicts.pallets || {}).length;
+            const itemConflictCount = Object.keys(data.conflicts.items || {}).length;
+
+            if (palletConflictCount > 0 || itemConflictCount > 0) {
+                applyVisualConflictIndicators(materialId);
+                showConflictLegend();
+            }
+        }
+    } catch (error) {
+        console.error('💥 Error in conflict check:', error);
+    }
+}
+// Function to show the conflict legend
+function showConflictLegend() {
+    const legend = document.getElementById('conflict-legend');
+    if (legend) {
+        legend.style.display = 'block';
+    }
+}
+// Function to apply visual indicators for conflicts
+function applyVisualConflictIndicators(materialId) {
+    console.log('🎨 Applying visual indicators for material:', materialId);
+
+    // Find the correct material card - use the one with the material configuration content
+    const materialCard = document.querySelector(`div.material-config-card[data-material-id="${materialId}"]`);
+    if (!materialCard) {
+        console.log('❌ Material configuration card not found for:', materialId);
+        return;
+    }
+
+    const conflicts = globalConflictData[materialId];
+    if (!conflicts) {
+        console.log('❌ No conflicts data for material:', materialId);
+        return;
+    }
+
+    // Apply pallet-level conflicts
+    if (conflicts.pallets) {
+        Object.keys(conflicts.pallets).forEach(palletId => {
+            console.log('🎯 Applying styling to pallet:', palletId);
+
+            // Find pallet checkbox within this specific material card
+            const palletCheckbox = materialCard.querySelector(`input[data-pallet-id="${palletId}"]`);
+
+            if (palletCheckbox) {
+                console.log('✅ Found pallet checkbox, applying styling');
+                const conflict = conflicts.pallets[palletId];
+                applyPalletConflictStyling(palletCheckbox, conflict);
+            } else {
+                console.log('❌ Pallet checkbox not found for:', palletId);
+            }
+        });
+    }
+
+    // Apply item-level conflicts
+    if (conflicts.items) {
+        Object.keys(conflicts.items).forEach(itemId => {
+            console.log('🎯 Applying styling to item:', itemId);
+
+            // Find item checkbox within this specific material card
+            const itemCheckbox = materialCard.querySelector(`input[data-item-id="${itemId}"]`);
+
+            if (itemCheckbox) {
+                console.log('✅ Found item checkbox, applying styling');
+                const conflict = conflicts.items[itemId];
+                applyItemConflictStyling(itemCheckbox, conflict);
+            } else {
+                console.log('❌ Item checkbox not found for:', itemId);
+            }
+        });
+    }
+}
+function retryConflictCheckForMaterial(materialId) {
+    console.log('🔄 Retrying conflict check for material:', materialId);
+
+    // First ensure items are visible
+    const materialCard = document.querySelector(`div.material-config-card[data-material-id="${materialId}"]`);
+    if (materialCard) {
+        const toggleButtons = materialCard.querySelectorAll('.toggle-all-items');
+        toggleButtons.forEach(button => {
+            if (button.textContent.includes('Show')) {
+                button.click();
+            }
+        });
+    }
+
+    // Wait for DOM to update, then apply styling
+    setTimeout(() => {
+        if (globalConflictData[materialId]) {
+            console.log('♻️ Using cached conflict data');
+            applyVisualConflictIndicators(materialId);
+        } else {
+            console.log('🔍 Re-fetching conflict data');
+            checkReleaseConflictsForMaterial(materialId);
+        }
+    }, 200);
+}
+// Function to apply styling to conflicted pallets
+function applyPalletConflictStyling(palletCheckbox, conflict) {
+    console.log('🚨 Applying pallet conflict styling:', conflict);
+
+    const label = palletCheckbox.closest('.form-check').querySelector('label');
+    const palletCard = palletCheckbox.closest('.card');
+
+    if (!label || !palletCard) {
+        console.log('❌ Could not find label or card elements');
+        return;
+    }
+
+    // Add visual styling classes
+    label.classList.add('conflict-highlighted');
+    palletCard.classList.add('pallet-conflict');
+
+    // Disable and uncheck checkbox - make it non-interactive
+    palletCheckbox.disabled = true;
+    palletCheckbox.checked = false;
+    palletCheckbox.style.pointerEvents = 'none'; // Extra protection against interaction
+
+    // Also disable the label to prevent clicking
+    label.style.pointerEvents = 'none';
+    label.style.cursor = 'not-allowed';
+
+    // Add tooltip
+    const tooltipText = getConflictTooltipText(conflict);
+    addTooltip(label, tooltipText);
+
+    console.log('✅ Applied pallet conflict styling successfully');
+}
+
+// Enhanced function to apply styling to conflicted items
+function applyItemConflictStyling(itemCheckbox, conflict) {
+    console.log('🚨 Applying item conflict styling:', conflict);
+
+    const label = itemCheckbox.closest('.form-check').querySelector('label');
+    const listItem = itemCheckbox.closest('li');
+
+    if (!label || !listItem) {
+        console.log('❌ Could not find label or list item elements');
+        return;
+    }
+
+    // Add visual styling classes
+    label.classList.add('conflict-highlighted');
+    listItem.classList.add('item-conflict');
+
+    // Disable and uncheck checkbox - make it non-interactive
+    itemCheckbox.disabled = true;
+    itemCheckbox.checked = false;
+    itemCheckbox.style.pointerEvents = 'none'; // Extra protection against interaction
+
+    // Also disable the label to prevent clicking
+    label.style.pointerEvents = 'none';
+    label.style.cursor = 'not-allowed';
+
+    // Add tooltip
+    const tooltipText = getConflictTooltipText(conflict);
+    addTooltip(label, tooltipText);
+
+    console.log('✅ Applied item conflict styling successfully');
+}
+
+// Function to generate tooltip text based on conflict type
+function getConflictTooltipText(conflict) {
+    switch (conflict.type) {
+        case 'EntirePalletScheduled':
+            return `This pallet is already scheduled for release in Job ${conflict.jobId || 'N/A'}`;
+        case 'ItemScheduled':
+            return `This item is already scheduled for release in Job ${conflict.jobId || 'N/A'}`;
+        case 'ParentPalletScheduled':
+            return `The parent pallet is scheduled for release, this item is unavailable`;
+        default:
+            return 'This item/pallet is already scheduled for release';
+    }
+}
+
+// Function to add tooltip to an element
+function addTooltip(element, text) {
+    element.setAttribute('title', text);
+    element.setAttribute('data-bs-toggle', 'tooltip');
+    element.setAttribute('data-bs-placement', 'top');
+
+    // Initialize Bootstrap tooltip if available
+    if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+        new bootstrap.Tooltip(element);
+    }
 }

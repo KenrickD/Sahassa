@@ -129,5 +129,7 @@ namespace WMS.Application.Interfaces
         Task<ServiceWebResult> CreateJobReleaseAsync(JobReleaseCreateDto dto, string userId);
         Task<List<GroupedPalletCountDto>> GetGroupedPalletCount(DateTime cutoffDate);
         Task<RMServiceWebResult> ValidateJobReleaseConflictsAsync(JobReleaseCreateDto dto);
+        Task<MaterialConflictResponse> GetMaterialReleaseConflictsAsync(Guid materialId);
+        Task<Dictionary<Guid, MaterialConflictResponse>> GetBatchMaterialReleaseConflictsAsync(List<Guid> materialIds);
     }
 }

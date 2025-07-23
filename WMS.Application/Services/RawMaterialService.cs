@@ -4382,5 +4382,222 @@ namespace WMS.Application.Services
 
             return conflicts;
         }
+        public async Task<MaterialConflictResponse> GetMaterialReleaseConflictsAsync(Guid materialId)
+        {
+            try
+            {
+                var response = new MaterialConflictResponse
+                {
+                    Pallets = new Dictionary<Guid, ConflictInfo>(),
+                    Items = new Dictionary<Guid, ConflictInfo>()
+                };
+
+                // Get all scheduled releases for this material that haven't been actually released yet
+                var scheduledReleases = await _dbContext.GIV_RM_ReleaseDetails
+                    .Include(rd => rd.GIV_RM_Release)
+                    .Include(rd => rd.GIV_RM_ReceivePallet)
+                    .Include(rd => rd.GIV_RM_ReceivePalletItem)
+                    .Where(rd => !rd.IsDeleted
+                        && rd.GIV_RM_Release.GIV_RawMaterialId == materialId
+                        && rd.GIV_RM_Release.ActualReleaseDate == null  // Job not actually released
+                        && rd.ActualReleaseDate == null)                 // Detail not actually released
+                    .ToListAsync();
+
+                // Process entire pallet conflicts
+                var entirePalletReleases = scheduledReleases
+                    .Where(rd => rd.IsEntirePallet && rd.GIV_RM_ReceivePalletId.HasValue)
+                    .ToList();
+
+                foreach (var release in entirePalletReleases)
+                {
+                    var palletId = release.GIV_RM_ReceivePalletId.Value;
+
+                    response.Pallets[palletId] = new ConflictInfo
+                    {
+                        Type = "EntirePalletScheduled",
+                        JobId = release.GIV_RM_Release.JobId,
+                        PalletCode = release.GIV_RM_ReceivePallet?.PalletCode
+                    };
+
+                    // Also mark all items in this pallet as conflicted
+                    var palletItems = await _dbContext.GIV_RM_ReceivePalletItems
+                        .Where(item => item.GIV_RM_ReceivePalletId == palletId && !item.IsDeleted)
+                        .ToListAsync();
+
+                    foreach (var item in palletItems)
+                    {
+                        response.Items[item.Id] = new ConflictInfo
+                        {
+                            Type = "ParentPalletScheduled",
+                            JobId = release.GIV_RM_Release.JobId,
+                            ItemCode = item.ItemCode,
+                            PalletCode = release.GIV_RM_ReceivePallet?.PalletCode
+                        };
+                    }
+                }
+
+                // Process individual item conflicts
+                var individualItemReleases = scheduledReleases
+                    .Where(rd => !rd.IsEntirePallet && rd.GIV_RM_ReceivePalletItemId != Guid.Empty)
+                    .ToList();
+
+                foreach (var release in individualItemReleases)
+                {
+                    var itemId = release.GIV_RM_ReceivePalletItemId;
+
+                    // Only add if not already marked as parent pallet scheduled
+                    if (!response.Items.ContainsKey(itemId))
+                    {
+                        response.Items[itemId] = new ConflictInfo
+                        {
+                            Type = "ItemScheduled",
+                            JobId = release.GIV_RM_Release.JobId,
+                            ItemCode = release.GIV_RM_ReceivePalletItem?.ItemCode,
+                            PalletCode = release.GIV_RM_ReceivePalletItem?.GIV_RM_ReceivePallet?.PalletCode
+                        };
+                    }
+                }
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting material release conflicts for material {MaterialId}", materialId);
+                throw;
+            }
+        }
+        // Add to RawMaterialService.cs
+
+        public async Task<Dictionary<Guid, MaterialConflictResponse>> GetBatchMaterialReleaseConflictsAsync(List<Guid> materialIds)
+        {
+            try
+            {
+                _logger.LogInformation("Checking conflicts for {Count} materials in batch", materialIds.Count);
+
+                // Single optimized query to get all scheduled releases for all materials
+                var scheduledReleases = await _dbContext.GIV_RM_ReleaseDetails
+                    .AsNoTracking()
+                    .Where(rd => !rd.IsDeleted
+                        && materialIds.Contains(rd.GIV_RM_Release.GIV_RawMaterialId)
+                        && rd.GIV_RM_Release.ActualReleaseDate == null  // Job not actually released
+                        && rd.ActualReleaseDate == null)                 // Detail not actually released
+                    .Select(rd => new ScheduledReleaseConflictDto
+                    {
+                        MaterialId = rd.GIV_RM_Release.GIV_RawMaterialId,
+                        JobId = rd.GIV_RM_Release.JobId,
+                        IsEntirePallet = rd.IsEntirePallet,
+                        PalletId = rd.GIV_RM_ReceivePalletId,
+                        ItemId = rd.GIV_RM_ReceivePalletItemId,
+                        PalletCode = rd.GIV_RM_ReceivePallet != null ? rd.GIV_RM_ReceivePallet.PalletCode : null,
+                        ItemCode = rd.GIV_RM_ReceivePalletItem != null ? rd.GIV_RM_ReceivePalletItem.ItemCode : null
+                    })
+                    .ToListAsync();
+
+                _logger.LogInformation("Found {Count} scheduled release details across all materials", scheduledReleases.Count);
+
+                // Get all items for pallets that have entire pallet conflicts (for marking individual items as conflicted)
+                var entirePalletIds = scheduledReleases
+                    .Where(sr => sr.IsEntirePallet && sr.PalletId.HasValue)
+                    .Select(sr => sr.PalletId.Value)
+                    .Distinct()
+                    .ToList();
+
+                var palletItems = new Dictionary<Guid, List<Guid>>();
+                if (entirePalletIds.Any())
+                {
+                    var itemsInConflictedPallets = await _dbContext.GIV_RM_ReceivePalletItems
+                        .AsNoTracking()
+                        .Where(item => entirePalletIds.Contains(item.GIV_RM_ReceivePalletId) && !item.IsDeleted)
+                        .Select(item => new { PalletId = item.GIV_RM_ReceivePalletId, ItemId = item.Id })
+                        .ToListAsync();
+
+                    palletItems = itemsInConflictedPallets
+                        .GroupBy(x => x.PalletId)
+                        .ToDictionary(g => g.Key, g => g.Select(x => x.ItemId).ToList());
+                }
+
+                // Process conflicts in memory for each material
+                var result = new Dictionary<Guid, MaterialConflictResponse>();
+
+                foreach (var materialId in materialIds)
+                {
+                    var materialConflicts = scheduledReleases.Where(sr => sr.MaterialId == materialId).ToList();
+                    result[materialId] = ProcessMaterialConflictsInMemory(materialConflicts, palletItems);
+                }
+
+                _logger.LogInformation("Processed conflicts for {Count} materials", result.Count);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting batch material release conflicts for materials: {MaterialIds}",
+                    string.Join(", ", materialIds));
+                throw;
+            }
+        }
+
+        private MaterialConflictResponse ProcessMaterialConflictsInMemory(
+            List<ScheduledReleaseConflictDto> materialConflicts,
+            Dictionary<Guid, List<Guid>> palletItems)
+        {
+            var response = new MaterialConflictResponse
+            {
+                Pallets = new Dictionary<Guid, ConflictInfo>(),
+                Items = new Dictionary<Guid, ConflictInfo>()
+            };
+
+            // Process entire pallet conflicts
+            var entirePalletConflicts = materialConflicts.Where(mc => mc.IsEntirePallet && mc.PalletId.HasValue);
+
+            foreach (var conflict in entirePalletConflicts)
+            {
+                var palletId = conflict.PalletId.Value;
+
+                // Add pallet conflict
+                response.Pallets[palletId] = new ConflictInfo
+                {
+                    Type = "EntirePalletScheduled",
+                    JobId = conflict.JobId,
+                    PalletCode = conflict.PalletCode
+                };
+
+                // Mark all items in this pallet as conflicted
+                if (palletItems.ContainsKey(palletId))
+                {
+                    foreach (var itemId in palletItems[palletId])
+                    {
+                        response.Items[itemId] = new ConflictInfo
+                        {
+                            Type = "ParentPalletScheduled",
+                            JobId = conflict.JobId,
+                            ItemCode = null, // We don't have item code in this context
+                            PalletCode = conflict.PalletCode
+                        };
+                    }
+                }
+            }
+
+            // Process individual item conflicts
+            var individualItemConflicts = materialConflicts.Where(mc => !mc.IsEntirePallet && mc.ItemId != Guid.Empty);
+
+            foreach (var conflict in individualItemConflicts)
+            {
+                var itemId = conflict.ItemId;
+
+                // Only add if not already marked as parent pallet scheduled
+                if (!response.Items.ContainsKey(itemId))
+                {
+                    response.Items[itemId] = new ConflictInfo
+                    {
+                        Type = "ItemScheduled",
+                        JobId = conflict.JobId,
+                        ItemCode = conflict.ItemCode,
+                        PalletCode = conflict.PalletCode
+                    };
+                }
+            }
+
+            return response;
+        }
     }
 }

@@ -1706,6 +1706,67 @@ namespace WMS.WebApp.Controllers
                 });
             }
         }
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CheckMaterialReleaseConflicts([FromBody] MaterialConflictCheckRequest request)
+        {
+            try
+            {
+                // Check permissions
+                if (!_currentUserService.HasPermission("RawMaterial.Read"))
+                {
+                    return Forbid();
+                }
+
+                var conflicts = await _rawMaterialService.GetMaterialReleaseConflictsAsync(request.MaterialId);
+
+                return Json(new
+                {
+                    success = true,
+                    conflicts = conflicts
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking material release conflicts for material {MaterialId}", request.MaterialId);
+                return Json(new
+                {
+                    success = false,
+                    message = "Failed to check release conflicts"
+                });
+            }
+        }
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CheckBatchMaterialReleaseConflicts([FromBody] BatchMaterialConflictCheckRequest request)
+        {
+            try
+            {
+                // Check permissions
+                if (!_currentUserService.HasPermission("RawMaterial.Read"))
+                {
+                    return Forbid();
+                }
+
+                var conflicts = await _rawMaterialService.GetBatchMaterialReleaseConflictsAsync(request.MaterialIds);
+
+                return Json(new
+                {
+                    success = true,
+                    conflicts = conflicts
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking batch material release conflicts for materials {MaterialIds}",
+                    string.Join(", ", request.MaterialIds));
+                return Json(new
+                {
+                    success = false,
+                    message = "Failed to check release conflicts"
+                });
+            }
+        }
         #endregion
     }
 }

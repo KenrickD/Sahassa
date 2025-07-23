@@ -114,6 +114,27 @@
                 </div>
             </div>
         </div>
+        <!--CONFLICT LEGEND -->
+        <div class="conflict-legend" id="conflict-legend" style="display: none;">
+            <div class="d-flex align-items-center mb-2">
+                <iconify-icon icon="lucide:info" class="me-2 text-warning"></iconify-icon>
+                <strong>Release Conflict Indicators</strong>
+            </div>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center mb-1">
+                        <div class="conflict-highlighted me-2" style="padding: 4px 8px; font-size: 10px;">Sample</div>
+                        <span>Already scheduled for release</span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center mb-1">
+                        <iconify-icon icon="lucide:mouse-pointer" class="me-2 text-info"></iconify-icon>
+                        <span>Hover for job details</span>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- Selected Materials Configuration -->
         <div id="selected-materials-container">
@@ -845,6 +866,108 @@
 
     .dark .material-config-card .pallets-container .card .pallet-header-compact {
         background-color: #111827 !important;
+    }
+    /* Conflict highlighting for pallets and items */
+    .conflict-highlighted {
+        background-color: #fef3cd !important;
+        color: #856404 !important;
+        border: 1px solid #ffeaa7 !important;
+        border-radius: 4px;
+        padding: 2px 6px;
+        position: relative;
+    }
+
+    .pallet-conflict {
+        border: 2px solid #f39c12 !important;
+        background-color: #fef9e7 !important;
+        box-shadow: 0 0 8px rgba(243, 156, 18, 0.3);
+    }
+
+    .item-conflict {
+        background-color: #fef3cd !important;
+        border-radius: 4px;
+        padding: 2px 4px;
+        border-left: 3px solid #f39c12;
+    }
+
+    /* Dark mode support for conflicts */
+    .dark .conflict-highlighted {
+        background-color: #8b4513 !important;
+        color: #ffd700 !important;
+        border-color: #daa520 !important;
+    }
+
+    .dark .pallet-conflict {
+        border-color: #daa520 !important;
+        background-color: #2d1810 !important;
+        box-shadow: 0 0 8px rgba(218, 165, 32, 0.3);
+    }
+
+    .dark .item-conflict {
+        background-color: #2d1810 !important;
+        border-left-color: #daa520;
+    }
+
+    /* Disabled state styling for conflicted items */
+    .conflict-highlighted input[type="checkbox"]:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    /* Tooltip styling */
+    .tooltip {
+        z-index: 1000;
+    }
+
+        .tooltip .tooltip-inner {
+            background-color: #856404;
+            color: white;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 12px;
+            max-width: 250px;
+        }
+
+    .dark .tooltip .tooltip-inner {
+        background-color: #daa520;
+        color: #000;
+    }
+
+    /* Animation for conflict indicators */
+    @@keyframes conflict-pulse {
+        0%
+
+    {
+        box-shadow: 0 0 0 0 rgba(243, 156, 18, 0.7);
+    }
+
+    70% {
+        box-shadow: 0 0 0 10px rgba(243, 156, 18, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(243, 156, 18, 0);
+    }
+
+    }
+
+    .pallet-conflict {
+        animation: conflict-pulse 2s infinite;
+    }
+
+    /* Conflict legend */
+    .conflict-legend {
+        margin-top: 10px;
+        padding: 10px;
+        background-color: #f8f9fa;
+        border-radius: 6px;
+        border-left: 4px solid #f39c12;
+        font-size: 12px;
+    }
+
+    .dark .conflict-legend {
+        background-color: #1f2937;
+        color: #e5e7eb;
     }
 </style>
 
