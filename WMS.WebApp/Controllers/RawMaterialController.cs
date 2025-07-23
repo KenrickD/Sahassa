@@ -1675,6 +1675,37 @@ namespace WMS.WebApp.Controllers
                 return RedirectToAction("JobReleaseDetails", new { jobId });
             }
         }
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ValidateJobReleaseConflicts([FromBody] JobReleaseCreateDto dto)
+        {
+            try
+            {
+                // Check permissions
+                if (!_currentUserService.HasPermission("RawMaterial.Read"))
+                {
+                    return Forbid();
+                }
+
+                var validationResult = await _rawMaterialService.ValidateJobReleaseConflictsAsync(dto);
+
+                return Json(new
+                {
+                    success = validationResult.Success,
+                    message = validationResult.ErrorMessage,
+                    conflicts = validationResult.ValidationDetails
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error validating job release conflicts");
+                return Json(new
+                {
+                    success = false,
+                    message = "Failed to validate job release conflicts"
+                });
+            }
+        }
         #endregion
     }
 }

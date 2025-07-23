@@ -9,6 +9,7 @@ using WMS.Domain.DTOs;
 using WMS.Domain.DTOs.Common;
 using WMS.Domain.DTOs.GIV_Container;
 using WMS.Domain.DTOs.GIV_FG_ReceivePallet;
+using WMS.Domain.DTOs.GIV_Invoicing;
 using WMS.Domain.DTOs.GIV_RawMaterial;
 using WMS.Domain.DTOs.GIV_RawMaterial.Import;
 using WMS.Domain.DTOs.GIV_RawMaterial.Web;
@@ -126,5 +127,7 @@ namespace WMS.Application.Interfaces
         Task<List<JobReleaseInventoryDto>> GetMaterialInventoryForJobReleaseAsync(List<Guid> materialIds);
 
         Task<ServiceWebResult> CreateJobReleaseAsync(JobReleaseCreateDto dto, string userId);
+        Task<List<GroupedPalletCountDto>> GetGroupedPalletCount(DateTime cutoffDate);
+        Task<RMServiceWebResult> ValidateJobReleaseConflictsAsync(JobReleaseCreateDto dto);
     }
 }

@@ -24,6 +24,7 @@ using WMS.Domain.DTOs.Common;
 using WMS.Domain.DTOs.GIV_Container;
 using WMS.Domain.DTOs.GIV_FG_ReceivePallet;
 using WMS.Domain.DTOs.GIV_FG_ReceivePallet.PalletDto;
+using WMS.Domain.DTOs.GIV_Invoicing;
 using WMS.Domain.DTOs.GIV_RawMaterial;
 using WMS.Domain.DTOs.GIV_RawMaterial.Import;
 using WMS.Domain.DTOs.GIV_RawMaterial.Web;
@@ -4129,6 +4130,257 @@ namespace WMS.Application.Services
                 _logger.LogError(ex, "Error creating job release for user {UserId}", userId);
                 return new ServiceWebResult { Success = false, ErrorMessage = ex.Message };
             }
+        }
+
+        public async Task<List<GroupedPalletCountDto>> GetGroupedPalletCount(DateTime cutoffDate)
+        {
+            try
+            {
+                //get all received pallet  from monday to sunday (sunday is cutoffdate)
+                _logger.LogDebug("RawMaterial - GetGroupedPalletCount");
+
+                DateTime startDate = cutoffDate.AddDays(-6).Date;
+                var rmPallets = await _dbContext.GIV_RM_ReceivePallets
+                        .Where(rp => !rp.IsDeleted && !rp.IsReleased)
+                        .Where(rp => !rp.GIV_RM_Receive.IsDeleted)
+                        .Where(rp => rp.GIV_RM_Receive.ReceivedDate >= startDate && rp.GIV_RM_Receive.ReceivedDate <= cutoffDate)
+                        .Where(rp => !rp.GIV_RM_Receive.RawMaterial.IsDeleted)
+                            .Select(rp => new
+                            {
+                                NDG = rp.GIV_RM_Receive.RawMaterial.NDG,
+                                Group9 = rp.GIV_RM_Receive.RawMaterial.Group9,
+                                Group3 = rp.GIV_RM_Receive.RawMaterial.Group3,
+                                Group6 = rp.GIV_RM_Receive.RawMaterial.Group6,
+                                Group8 = rp.GIV_RM_Receive.RawMaterial.Group8,
+                                Group4_1 = rp.GIV_RM_Receive.RawMaterial.Group4_1,
+                                Scentaurus = rp.GIV_RM_Receive.RawMaterial.Scentaurus,
+                                Id = rp.Id
+                            }).ToListAsync();
+                /*
+                 grouped to:
+                    1.) NDG and Group9
+                    2.) Group3, 4.1, 6, 8
+                    3.) Scentaurus
+                each pallet can only belong to one group
+                 */
+                var dtos = new List<GroupedPalletCountDto>
+                {
+                    new GroupedPalletCountDto{ group="NDG/9", palletCount=0},
+                    new GroupedPalletCountDto{ group="3/4/6/8", palletCount=0},
+                    new GroupedPalletCountDto{ group="Scentaurus", palletCount=0}
+                };
+
+                foreach(var rmPallet in rmPallets)
+                {
+                    if (rmPallet.NDG || rmPallet.Group9)
+                    {
+                        dtos.First(x => x.group == "NDG/9").palletCount++;
+                        continue;
+                    }
+                    if (rmPallet.Group3 || rmPallet.Group4_1 || rmPallet.Group6 || rmPallet.Group8)
+                    {
+                        dtos.First(x => x.group == "3/4/6/8").palletCount++;
+                        continue;
+                    }
+                    if (rmPallet.Scentaurus)
+                    {
+                        dtos.First(x => x.group == "Scentaurus").palletCount++;
+                        continue;
+                    }
+                }
+                return dtos;
+            }
+            catch (Exception)
+            {
+                _logger.LogError("Error RawMaterial - GetGroupedPalletCount");
+                throw;
+            }
+
+        }
+        public async Task<RMServiceWebResult> ValidateJobReleaseConflictsAsync(JobReleaseCreateDto dto)
+        {
+            var conflicts = new List<JobReleaseConflictDto>();
+
+            foreach (var material in dto.Materials)
+            {
+                foreach (var receive in material.Receives)
+                {
+                    // Validate entire pallets
+                    foreach (var palletRequest in receive.Pallets)
+                    {
+                        var palletConflicts = await ValidatePalletConflicts(
+                            material.MaterialId,
+                            receive.ReceiveId,
+                            palletRequest.PalletId,
+                            isEntirePallet: true
+                        );
+                        conflicts.AddRange(palletConflicts);
+                    }
+
+                    // Validate individual items
+                    foreach (var itemRequest in receive.Items)
+                    {
+                        var itemConflicts = await ValidateItemConflicts(
+                            material.MaterialId,
+                            receive.ReceiveId,
+                            itemRequest.ItemId // Corrected: ItemId instead of PalletId
+                        );
+                        conflicts.AddRange(itemConflicts);
+                    }
+                }
+            }
+
+            if (conflicts.Any())
+            {
+                return new RMServiceWebResult
+                {
+                    Success = false,
+                    ErrorMessage = $"Found {conflicts.Count} conflict(s). Please resolve before proceeding.",
+                    ValidationDetails = conflicts 
+                };
+            }
+
+            return new RMServiceWebResult { Success = true };
+        }
+
+        private async Task<List<JobReleaseConflictDto>> ValidatePalletConflicts(
+            Guid materialId,
+            Guid receiveId,
+            Guid palletId,
+            bool isEntirePallet)
+        {
+            var conflicts = new List<JobReleaseConflictDto>();
+
+            // Check for existing entire pallet releases
+            var existingEntirePalletReleases = await _dbContext.GIV_RM_ReleaseDetails
+                .Include(rd => rd.GIV_RM_Release)
+                    .ThenInclude(r => r.GIV_RawMaterial)
+                .Include(rd => rd.GIV_RM_ReceivePallet)
+                .Where(rd => !rd.IsDeleted
+                    && rd.GIV_RM_Release.ActualReleaseDate == null  // Unreleased job
+                    && rd.ActualReleaseDate == null                  // Unreleased detail
+                    && rd.IsEntirePallet == true
+                    && rd.GIV_RM_ReceivePalletId == palletId
+                    && rd.GIV_RM_ReceiveId == receiveId)
+                .ToListAsync();
+
+            foreach (var existingRelease in existingEntirePalletReleases)
+            {
+                conflicts.Add(new JobReleaseConflictDto
+                {
+                    MaterialNo = existingRelease.GIV_RM_Release.GIV_RawMaterial.MaterialNo,
+                    ReceiveId = receiveId,
+                    PalletCode = existingRelease.GIV_RM_ReceivePallet?.PalletCode,
+                    ConflictType = "EntirePalletAlreadyScheduled",
+                    ExistingJobId = existingRelease.GIV_RM_Release.JobId,
+                    ConflictingItems = new List<string>()
+                });
+            }
+
+            // If requesting entire pallet, check for individual item conflicts
+            if (isEntirePallet)
+            {
+                var existingItemReleases = await _dbContext.GIV_RM_ReleaseDetails
+                    .Include(rd => rd.GIV_RM_Release)
+                        .ThenInclude(r => r.GIV_RawMaterial)
+                    .Include(rd => rd.GIV_RM_ReceivePallet)
+                    .Include(rd => rd.GIV_RM_ReceivePalletItem)
+                    .Where(rd => !rd.IsDeleted
+                        && rd.GIV_RM_Release.ActualReleaseDate == null
+                        && rd.ActualReleaseDate == null
+                        && rd.IsEntirePallet == false
+                        && rd.GIV_RM_ReceivePalletId == palletId
+                        && rd.GIV_RM_ReceiveId == receiveId)
+                    .ToListAsync();
+
+                if (existingItemReleases.Any())
+                {
+                    conflicts.Add(new JobReleaseConflictDto
+                    {
+                        MaterialNo = existingItemReleases.First().GIV_RM_Release.GIV_RawMaterial.MaterialNo,
+                        ReceiveId = receiveId,
+                        PalletCode = existingItemReleases.First().GIV_RM_ReceivePallet?.PalletCode,
+                        ConflictType = "IndividualItemsAlreadyScheduled",
+                        ExistingJobId = existingItemReleases.First().GIV_RM_Release.JobId,
+                        ConflictingItems = existingItemReleases
+                            .Select(r => r.GIV_RM_ReceivePalletItem?.ItemCode ?? "Unknown")
+                            .ToList()
+                    });
+                }
+            }
+
+            return conflicts;
+        }
+
+        private async Task<List<JobReleaseConflictDto>> ValidateItemConflicts(
+            Guid materialId,
+            Guid receiveId,
+            Guid itemId) // Corrected: removed palletId parameter since we get it from the item
+        {
+            var conflicts = new List<JobReleaseConflictDto>();
+
+            // First, get the item to find its pallet
+            var item = await _dbContext.GIV_RM_ReceivePalletItems
+                .Include(i => i.GIV_RM_ReceivePallet)
+                    .ThenInclude(p => p.GIV_RM_Receive)
+                        .ThenInclude(r => r.RawMaterial) 
+                .FirstOrDefaultAsync(i => i.Id == itemId && !i.IsDeleted);
+
+            if (item == null)
+            {
+                return conflicts; // Item not found, skip validation
+            }
+
+            var palletId = item.GIV_RM_ReceivePalletId;
+
+            // Check if entire pallet is already scheduled
+            var entirePalletScheduled = await _dbContext.GIV_RM_ReleaseDetails
+                .Include(rd => rd.GIV_RM_Release)
+                .AnyAsync(rd => !rd.IsDeleted
+                    && rd.GIV_RM_Release.ActualReleaseDate == null
+                    && rd.ActualReleaseDate == null
+                    && rd.IsEntirePallet == true
+                    && rd.GIV_RM_ReceivePalletId == palletId
+                    && rd.GIV_RM_ReceiveId == receiveId);
+
+            if (entirePalletScheduled)
+            {
+                conflicts.Add(new JobReleaseConflictDto
+                {
+                    MaterialNo = item.GIV_RM_ReceivePallet.GIV_RM_Receive.RawMaterial.MaterialNo, 
+                    ReceiveId = receiveId,
+                    PalletCode = item.GIV_RM_ReceivePallet?.PalletCode,
+                    ConflictType = "EntirePalletAlreadyScheduled",
+                    ExistingJobId = null, // Could fetch specific JobId if needed
+                    ConflictingItems = new List<string>()
+                });
+            }
+
+            // Check for duplicate individual item
+            var existingItemRelease = await _dbContext.GIV_RM_ReleaseDetails
+                .Include(rd => rd.GIV_RM_Release)
+                    .ThenInclude(r => r.GIV_RawMaterial)
+                .Include(rd => rd.GIV_RM_ReceivePalletItem)
+                .FirstOrDefaultAsync(rd => !rd.IsDeleted
+                    && rd.GIV_RM_Release.ActualReleaseDate == null
+                    && rd.ActualReleaseDate == null
+                    && rd.IsEntirePallet == false
+                    && rd.GIV_RM_ReceivePalletItemId == itemId);
+
+            if (existingItemRelease != null)
+            {
+                conflicts.Add(new JobReleaseConflictDto
+                {
+                    MaterialNo = existingItemRelease.GIV_RM_Release.GIV_RawMaterial.MaterialNo,
+                    ReceiveId = receiveId,
+                    PalletCode = existingItemRelease.GIV_RM_ReceivePalletItem?.GIV_RM_ReceivePallet?.PalletCode, // Corrected: get PalletCode through navigation
+                    ConflictType = "IndividualItemAlreadyScheduled",
+                    ExistingJobId = existingItemRelease.GIV_RM_Release.JobId,
+                    ConflictingItems = new List<string> { existingItemRelease.GIV_RM_ReceivePalletItem?.ItemCode ?? "Unknown" }
+                });
+            }
+
+            return conflicts;
         }
     }
 }
