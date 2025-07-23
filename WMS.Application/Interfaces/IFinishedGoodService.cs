@@ -13,6 +13,7 @@ using WMS.Domain.DTOs.GIV_FG_ReceivePalletItem;
 using WMS.Domain.DTOs.GIV_FG_ReceivePalletPhoto;
 using WMS.Domain.DTOs.GIV_FinishedGood;
 using WMS.Domain.DTOs.GIV_FinishedGood.Web;
+using WMS.Domain.DTOs.GIV_Invoicing;
 using WMS.Domain.DTOs.GIV_RawMaterial;
 using WMS.Domain.DTOs.GIV_RM_ReceivePallet;
 using WMS.Domain.DTOs.GIV_RM_ReceivePalletItem;
@@ -83,5 +84,28 @@ namespace WMS.Application.Interfaces
     string? searchTerm,
     int sortColumn,
     bool sortAscending);
+        Task<List<GroupedPalletCountDto>> GetGroupedPalletCount(DateTime cutoffDate);
+        Task<PaginatedResult<JobReleaseTableRowDto>> GetPaginatedJobReleasesAsync(
+    int start,
+    int length,
+    string? searchTerm,
+    int sortColumn,
+    bool sortAscending);
+        Task<JobReleaseDetailsDto?> GetJobReleaseDetailsByJobIdAsync(Guid jobId);
+        Task<PaginatedResult<JobReleaseIndividualReleaseDto>> GetPaginatedJobReleaseIndividualReleasesAsync(
+    Guid jobId,
+    int start,
+    int length,
+    string? searchTerm,
+    int sortColumn,
+    bool sortAscending);
+        Task<(byte[] fileContent, string fileName)> ExportJobReleaseToExcelAsync(Guid jobId);
+        Task<List<FinishedGoodForJobReleaseDto>> GetAvailableFinishedGoodsForJobReleaseAsync();
+
+        Task<List<JobReleaseInventoryDto>> GetFinishedGoodInventoryForJobReleaseAsync(List<Guid> finishedGoodIds);
+
+        Task<FinishedGoodConflictResponse> GetFinishedGoodReleaseConflictsAsync(Guid finishedGoodId);
+
+        Task<Dictionary<Guid, FinishedGoodConflictResponse>> GetBatchFinishedGoodReleaseConflictsAsync(List<Guid> finishedGoodIds);
     }
 }

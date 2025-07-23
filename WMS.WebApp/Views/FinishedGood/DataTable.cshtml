@@ -16,6 +16,14 @@
                         <iconify-icon icon="lucide:plus-circle" width="20" height="20"></iconify-icon>
                         Add Finished Good
                     </a>
+                    @if (ViewBag.HasWriteAccess == true)
+                    {
+                        <a href="@Url.Action("JobReleases", "FinishedGood")"
+                        class="btn btn-warning text-sm btn-sm px-3 py-3 rounded-lg flex items-center gap-2">
+                            <iconify-icon icon="mdi:briefcase-outline" class="icon text-xl line-height-1"></iconify-icon>
+                            View Job Releases
+                        </a>
+                    }
                 </div>
                 <div id="grand-totals-panel" class="p-4 mb-4 bg-neutral-50 dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700">
                     <div class="flex justify-end items-center">

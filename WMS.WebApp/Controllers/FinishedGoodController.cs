@@ -8,6 +8,7 @@ using WMS.Domain.DTOs.GIV_FG_ReceivePallet;
 using WMS.Domain.DTOs.GIV_FG_ReceivePalletItem;
 using WMS.Domain.DTOs.GIV_FG_ReceivePalletPhoto;
 using WMS.Domain.DTOs.GIV_FinishedGood;
+using WMS.Domain.DTOs.GIV_FinishedGood.Web;
 using WMS.Domain.DTOs.GIV_RawMaterial;
 using WMS.Domain.DTOs.GIV_RM_ReceivePallet;
 using WMS.Domain.DTOs.GIV_RM_ReceivePalletItem;
@@ -93,6 +94,7 @@ namespace WMS.WebApp.Controllers
         public async Task<IActionResult> Datatable()
         {
             var finishedGoods = await _finishedGoodService.GetFinishedGoodsAsync();
+            ViewBag.HasWriteAccess = _currentUserService.HasPermission(AppConsts.Permissions.FINISHED_GOODS_WRITE);
             return View(finishedGoods); // Pass to DataTable.cshtml
         }
         [HttpGet]
@@ -826,6 +828,313 @@ namespace WMS.WebApp.Controllers
                 });
             }
         }
+        #region JobRelease
 
+        [HttpGet]
+        public async Task<IActionResult> JobReleases()
+        {
+            _logger.LogInformation("Accessing Job Releases page for user {UserId}", _currentUserService.UserId);
+
+            // Check permissions
+            if (!_currentUserService.HasPermission("FinishedGood.Read"))
+            {
+                _logger.LogWarning("User {UserId} denied access to Job Releases - insufficient permissions",
+                    _currentUserService.UserId);
+                return Forbid();
+            }
+
+            return View();
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> GetPaginatedJobReleases([FromBody] DataTablesRequest request)
+        {
+            try
+            {
+                // Check permissions
+                if (!_currentUserService.HasPermission("FinishedGood.Read"))
+                {
+                    return Forbid();
+                }
+
+                string searchTerm = request.Search?.Value;
+                int sortColumn = request.Order?.FirstOrDefault()?.Column ?? 0;
+                bool sortAscending = request.Order?.FirstOrDefault()?.Dir == "asc";
+
+                var result = await _finishedGoodService.GetPaginatedJobReleasesAsync(
+                    request.Start,
+                    request.Length,
+                    searchTerm,
+                    sortColumn,
+                    sortAscending
+                );
+
+                return Json(new
+                {
+                    draw = request.Draw,
+                    recordsTotal = result.TotalCount,
+                    recordsFiltered = result.FilteredCount,
+                    data = result.Items
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading job releases");
+                return Json(new
+                {
+                    draw = request.Draw,
+                    recordsTotal = 0,
+                    recordsFiltered = 0,
+                    data = new List<object>(),
+                    error = "Failed to load job releases"
+                });
+            }
+        }
+
+        [HttpGet]
+        [Route("FinishedGood/JobReleaseDetails/{jobId:guid}")]
+        public async Task<IActionResult> JobReleaseDetails(Guid jobId)
+        {
+            _logger.LogInformation("Accessing Job Release Details for JobId {JobId} by user {UserId}",
+                jobId, _currentUserService.UserId);
+
+            // Check permissions
+            if (!_currentUserService.HasPermission("FinishedGood.Read"))
+            {
+                _logger.LogWarning("User {UserId} denied access to Job Release Details - insufficient permissions",
+                    _currentUserService.UserId);
+                return Forbid();
+            }
+
+            var jobReleaseDetails = await _finishedGoodService.GetJobReleaseDetailsByJobIdAsync(jobId);
+            if (jobReleaseDetails == null)
+            {
+                _logger.LogWarning("Job release not found for JobId: {JobId}", jobId);
+                return NotFound();
+            }
+
+            return View("JobReleaseDetails", jobReleaseDetails);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> GetPaginatedJobReleaseDetails(Guid jobId, [FromBody] DataTablesRequest request)
+        {
+            try
+            {
+                // Check permissions
+                if (!_currentUserService.HasPermission("FinishedGood.Read"))
+                {
+                    return Forbid();
+                }
+
+                string searchTerm = request.Search?.Value;
+                int sortColumn = request.Order?.FirstOrDefault()?.Column ?? 0;
+                bool sortAscending = request.Order?.FirstOrDefault()?.Dir == "asc";
+
+                var result = await _finishedGoodService.GetPaginatedJobReleaseIndividualReleasesAsync(
+                    jobId,
+                    request.Start,
+                    request.Length,
+                    searchTerm,
+                    sortColumn,
+                    sortAscending
+                );
+
+                return Json(new
+                {
+                    draw = request.Draw,
+                    recordsTotal = result.TotalCount,
+                    recordsFiltered = result.FilteredCount,
+                    data = result.Items
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading job release details for JobId={JobId}", jobId);
+                return Json(new
+                {
+                    draw = request.Draw,
+                    recordsTotal = 0,
+                    recordsFiltered = 0,
+                    data = new List<object>(),
+                    error = "Failed to load job release details"
+                });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ExportJobReleaseExcel(Guid jobId)
+        {
+            try
+            {
+                _logger.LogInformation("Exporting job release Excel for JobId {JobId} by user {UserId}",
+                    jobId, _currentUserService.UserId);
+
+                // Check permissions
+                if (!_currentUserService.HasPermission("FinishedGood.Read"))
+                {
+                    _logger.LogWarning("User {UserId} denied access to export job release - insufficient permissions",
+                        _currentUserService.UserId);
+                    return Forbid();
+                }
+
+                var (fileContent, fileName) = await _finishedGoodService.ExportJobReleaseToExcelAsync(jobId);
+
+                _logger.LogInformation("Job release Excel export completed for JobId: {JobId}, File: {FileName}",
+                    jobId, fileName);
+
+                return File(fileContent,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    fileName);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Job release not found for export: JobId={JobId}", jobId);
+                return NotFound("Job release not found");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error exporting job release Excel for JobId={JobId}", jobId);
+                return BadRequest("Failed to export job release data");
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CheckFinishedGoodReleaseConflicts([FromBody] FinishedGoodConflictCheckRequest request)
+        {
+            try
+            {
+                // Check permissions
+                if (!_currentUserService.HasPermission("FinishedGood.Read"))
+                {
+                    return Forbid();
+                }
+
+                var conflicts = await _finishedGoodService.GetFinishedGoodReleaseConflictsAsync(request.FinishedGoodId);
+
+                return Json(new
+                {
+                    success = true,
+                    conflicts = conflicts
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking finished good release conflicts for FinishedGoodId {FinishedGoodId}",
+                    request.FinishedGoodId);
+                return Json(new
+                {
+                    success = false,
+                    message = "Failed to check release conflicts"
+                });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAvailableFinishedGoodsForJobRelease()
+        {
+            try
+            {
+                // Check permissions
+                if (!_currentUserService.HasPermission("FinishedGood.Read"))
+                {
+                    return Forbid();
+                }
+
+                var finishedGoods = await _finishedGoodService.GetAvailableFinishedGoodsForJobReleaseAsync();
+
+                return Json(new
+                {
+                    success = true,
+                    data = finishedGoods
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching available finished goods for job release");
+                return Json(new
+                {
+                    success = false,
+                    message = "Failed to load available finished goods"
+                });
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> GetFinishedGoodInventoryForJobRelease([FromBody] List<Guid> finishedGoodIds)
+        {
+            try
+            {
+                // Check permissions
+                if (!_currentUserService.HasPermission("FinishedGood.Read"))
+                {
+                    return Forbid();
+                }
+
+                if (finishedGoodIds == null || !finishedGoodIds.Any())
+                {
+                    return BadRequest(new { success = false, message = "No finished good IDs provided" });
+                }
+
+                var inventory = await _finishedGoodService.GetFinishedGoodInventoryForJobReleaseAsync(finishedGoodIds);
+
+                return Json(new
+                {
+                    success = true,
+                    data = inventory
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching finished good inventory for job release");
+                return Json(new
+                {
+                    success = false,
+                    message = "Failed to load finished good inventory"
+                });
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> GetBatchFinishedGoodReleaseConflicts([FromBody] List<Guid> finishedGoodIds)
+        {
+            try
+            {
+                // Check permissions
+                if (!_currentUserService.HasPermission("FinishedGood.Read"))
+                {
+                    return Forbid();
+                }
+
+                if (finishedGoodIds == null || !finishedGoodIds.Any())
+                {
+                    return BadRequest(new { success = false, message = "No finished good IDs provided" });
+                }
+
+                var conflicts = await _finishedGoodService.GetBatchFinishedGoodReleaseConflictsAsync(finishedGoodIds);
+
+                return Json(new
+                {
+                    success = true,
+                    data = conflicts
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking batch finished good release conflicts");
+                return Json(new
+                {
+                    success = false,
+                    message = "Failed to check release conflicts"
+                });
+            }
+        }
+
+        #endregion
     }
 }

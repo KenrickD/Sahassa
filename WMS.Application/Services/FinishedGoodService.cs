@@ -24,8 +24,9 @@ using WMS.Domain.DTOs.GIV_FG_ReceivePalletItem;
 using WMS.Domain.DTOs.GIV_FG_ReceivePalletPhoto;
 using WMS.Domain.DTOs.GIV_FinishedGood;
 using WMS.Domain.DTOs.GIV_FinishedGood.Web;
+using WMS.Domain.DTOs.GIV_Invoicing;
 using WMS.Domain.DTOs.GIV_RawMaterial;
-using WMS.Domain.DTOs.GIV_RawMaterial.Web;
+//using WMS.Domain.DTOs.GIV_RawMaterial.Web;
 using WMS.Domain.DTOs.GIV_RM_Receive;
 using WMS.Domain.DTOs.GIV_RM_ReceivePallet;
 
@@ -1805,6 +1806,71 @@ namespace WMS.Application.Services
                 FilteredCount = filteredCount
             };
         }
+        public async Task<List<GroupedPalletCountDto>> GetGroupedPalletCount(DateTime cutoffDate)
+        {
+            try
+            {
+                //get all received pallet  from monday to sunday (sunday is cutoffdate)
+                _logger.LogDebug("FinishedGood - GetGroupedPalletCount");
+
+                DateTime startDate = cutoffDate.AddDays(-6).Date;
+                var rmPallets = await _dbContext.GIV_FG_ReceivePallets
+                        .Where(rp => !rp.IsDeleted && !rp.IsReleased)
+                        .Where(rp => !rp.Receive.IsDeleted)
+                        .Where(rp => rp.Receive.ReceivedDate >= startDate && rp.Receive.ReceivedDate <= cutoffDate)
+                        .Where(rp => !rp.Receive.FinishedGood.IsDeleted)
+                            .Select(rp => new
+                            {
+                                NDG = rp.Receive.FinishedGood.NDG,
+                                Group9 = rp.Receive.FinishedGood.Group9,
+                                Group3 = rp.Receive.FinishedGood.Group3,
+                                Group6 = rp.Receive.FinishedGood.Group6,
+                                Group8 = rp.Receive.FinishedGood.Group8,
+                                Group4_1 = rp.Receive.FinishedGood.Group4_1,
+                                Scentaurus = rp.Receive.FinishedGood.Scentaurus,
+                                Id = rp.Id
+                            }).ToListAsync();
+                /*
+                 grouped to:
+                    1.) NDG and Group9
+                    2.) Group3, 4.1, 6, 8
+                    3.) Scentaurus
+                each pallet can only belong to one group
+                 */
+                var dtos = new List<GroupedPalletCountDto>
+                {
+                    new GroupedPalletCountDto{ group="NDG/9", palletCount=0},
+                    new GroupedPalletCountDto{ group="3/4/6/8", palletCount=0},
+                    new GroupedPalletCountDto{ group="Scentaurus", palletCount=0}
+                };
+
+                foreach (var rmPallet in rmPallets)
+                {
+                    if (rmPallet.NDG || rmPallet.Group9)
+                    {
+                        dtos.First(x => x.group == "NDG/9").palletCount++;
+                        continue;
+                    }
+                    if (rmPallet.Group3 || rmPallet.Group4_1 || rmPallet.Group6 || rmPallet.Group8)
+                    {
+                        dtos.First(x => x.group == "3/4/6/8").palletCount++;
+                        continue;
+                    }
+                    if (rmPallet.Scentaurus)
+                    {
+                        dtos.First(x => x.group == "Scentaurus").palletCount++;
+                        continue;
+                    }
+                }
+                return dtos;
+            }
+            catch (Exception)
+            {
+                _logger.LogError("Error FinishedGood - GetGroupedPalletCount");
+                throw;
+            }
+
+        }
 
         public async Task<FG_ReleaseDetailsViewDto?> GetReleaseDetailsByIdAsync(Guid releaseId)
         {
@@ -1940,7 +2006,650 @@ namespace WMS.Application.Services
             };
         }
 
+        #region JobRelease - Read Operations
 
+        public async Task<PaginatedResult<JobReleaseTableRowDto>> GetPaginatedJobReleasesAsync(
+    int start,
+    int length,
+    string? searchTerm,
+    int sortColumn,
+    bool sortAscending)
+        {
+            _logger.LogInformation("Fetching paginated job releases (start={Start}, length={Length}, search={SearchTerm})",
+                start, length, searchTerm);
+
+            // Build the base query that groups releases by JobId
+            var jobQuery = _dbContext.GIV_FG_Releases
+                .AsNoTracking()
+                .Include(r => r.GIV_FinishedGood)
+                .Include(r => r.GIV_FG_ReleaseDetails) 
+                .Where(r => r.JobId.HasValue && !r.IsDeleted)
+                .GroupBy(r => r.JobId)
+                .Select(g => new
+                {
+                    JobId = g.Key,
+                    PlannedReleaseDate = g.Min(r => r.ReleaseDate),
+                    CreatedBy = g.First().CreatedBy,
+                    FinishedGoodCount = g.Select(r => r.GIV_FinishedGoodId).Distinct().Count(),
+                    AllReleases = g.ToList(),
+                    TotalReleases = g.Count(),
+                    CompletedReleases = g.Count(r => r.ActualReleaseDate.HasValue)
+                });
+
+            // Apply search filter
+            if (!string.IsNullOrEmpty(searchTerm))
+            {
+                jobQuery = jobQuery.Where(j =>
+                    j.CreatedBy.Contains(searchTerm) ||
+                    j.AllReleases.Any(r => r.GIV_FinishedGood.SKU.Contains(searchTerm)));
+            }
+
+            // Get total counts
+            var totalCount = await jobQuery.CountAsync();
+            var filteredCount = totalCount;
+
+            // Apply sorting
+            var sortedQuery = sortColumn switch
+            {
+                0 => sortAscending ? jobQuery.OrderBy(j => j.JobId) : jobQuery.OrderByDescending(j => j.JobId),
+                1 => sortAscending ? jobQuery.OrderBy(j => j.PlannedReleaseDate) : jobQuery.OrderByDescending(j => j.PlannedReleaseDate),
+                2 => sortAscending ? jobQuery.OrderBy(j => j.CreatedBy) : jobQuery.OrderByDescending(j => j.CreatedBy),
+                3 => sortAscending ? jobQuery.OrderBy(j => j.FinishedGoodCount) : jobQuery.OrderByDescending(j => j.FinishedGoodCount),
+                _ => jobQuery.OrderByDescending(j => j.PlannedReleaseDate)
+            };
+
+            // Get paginated results
+            var jobs = await sortedQuery
+                .Skip(start)
+                .Take(length)
+                .ToListAsync();
+
+            // Get user information for the job creators
+            var createdByUserIds = jobs.Select(j => j.CreatedBy).Distinct().ToList();
+            var users = await _dbContext.Users
+                .Where(u => createdByUserIds.Contains(u.Id.ToString()) && !u.IsDeleted)
+                .Select(u => new { UserId = u.Id.ToString(), u.Username, u.FullName })
+                .ToListAsync();
+
+            var userLookup = users.ToDictionary(u => u.UserId, u => new { u.Username, u.FullName });
+
+            // Build result DTOs
+            var jobReleaseDtos = new List<JobReleaseTableRowDto>();
+
+            foreach (var job in jobs)
+            {
+                // Calculate aggregated totals for the job
+                var totalPallets = 0;
+                var totalItems = 0;
+
+                foreach (var release in job.AllReleases)
+                {
+                    // Now this should work because we included GIV_FG_ReleaseDetails
+                    var releaseDetails = release.GIV_FG_ReleaseDetails.Where(d => !d.IsDeleted).ToList();
+                    totalPallets += releaseDetails.Count(d => d.IsEntirePallet);
+                    totalItems += releaseDetails.Count(d => !d.IsEntirePallet);
+                }
+
+                // Determine job status
+                var jobStatus = GetJobStatus(job.AllReleases, job.PlannedReleaseDate);
+
+                // Calculate completion percentage
+                var completionPercentage = job.TotalReleases > 0
+                    ? (decimal)job.CompletedReleases / job.TotalReleases * 100
+                    : 0;
+
+                // Get user info
+                var createdByUser = userLookup.TryGetValue(job.CreatedBy, out var user) ? user : null;
+
+                var dto = new JobReleaseTableRowDto
+                {
+                    JobId = job.JobId!.Value,
+                    PlannedReleaseDate = job.PlannedReleaseDate,
+                    CreatedBy = createdByUser?.Username ?? job.CreatedBy,
+                    CreatedByFullName = createdByUser?.FullName,
+                    FinishedGoodCount = job.FinishedGoodCount,
+                    TotalPallets = totalPallets,
+                    TotalItems = totalItems,
+                    JobStatus = jobStatus,
+                    CompletionPercentage = Math.Round(completionPercentage, 1)
+                };
+
+                jobReleaseDtos.Add(dto);
+            }
+
+            _logger.LogInformation("Returning {Count} job releases from total {TotalCount}", jobReleaseDtos.Count, totalCount);
+
+            return new PaginatedResult<JobReleaseTableRowDto>
+            {
+                Items = jobReleaseDtos,
+                TotalCount = totalCount,
+                FilteredCount = filteredCount
+            };
+        }
+
+        public async Task<JobReleaseDetailsDto?> GetJobReleaseDetailsByJobIdAsync(Guid jobId)
+        {
+            _logger.LogInformation("Fetching job release details for JobId: {JobId}", jobId);
+
+            var releases = await _dbContext.GIV_FG_Releases
+                .AsNoTracking()
+                .Include(r => r.GIV_FinishedGood)
+                .Include(r => r.GIV_FG_ReleaseDetails)
+                .Where(r => r.JobId == jobId && !r.IsDeleted)
+                .ToListAsync();
+
+            if (!releases.Any())
+            {
+                _logger.LogWarning("No releases found for JobId: {JobId}", jobId);
+                return null;
+            }
+
+            // Get user information for creators
+            var createdByUserIds = releases.Select(r => r.CreatedBy).Distinct().ToList();
+            var users = await _dbContext.Users
+                .Where(u => createdByUserIds.Contains(u.Id.ToString()) && !u.IsDeleted)
+                .Select(u => new { UserId = u.Id.ToString(), u.Username, u.FullName })
+                .ToListAsync();
+
+            var userLookup = users.ToDictionary(u => u.UserId, u => new { u.Username, u.FullName });
+
+            // Calculate aggregated data
+            var totalPallets = 0;
+            var totalItems = 0;
+            var completedReleases = 0;
+
+            foreach (var release in releases)
+            {
+                var releaseDetails = release.GIV_FG_ReleaseDetails.Where(d => !d.IsDeleted).ToList();
+                totalPallets += releaseDetails.Count(d => d.IsEntirePallet);
+                totalItems += releaseDetails.Count(d => !d.IsEntirePallet);
+
+                if (release.ActualReleaseDate.HasValue)
+                {
+                    completedReleases++;
+                }
+            }
+
+            // Get job metadata from first release (assuming all releases in job have same creation info)
+            var firstRelease = releases.OrderBy(r => r.CreatedAt).First();
+            var createdByUser = userLookup.TryGetValue(firstRelease.CreatedBy, out var user) ? user : null;
+
+            // Determine status
+            var statusInfo = GetJobStatusWithClass(releases, firstRelease.ReleaseDate);
+
+            // Calculate completion percentage
+            var completionPercentage = releases.Count > 0
+                ? (decimal)completedReleases / releases.Count * 100
+                : 0;
+
+            var dto = new JobReleaseDetailsDto
+            {
+                JobId = jobId,
+                CreatedDate = firstRelease.CreatedAt,
+                CreatedBy = createdByUser?.Username ?? firstRelease.CreatedBy,
+                CreatedByFullName = createdByUser?.FullName,
+                StatusText = statusInfo.Status,
+                StatusClass = statusInfo.StatusClass,
+                FinishedGoodCount = releases.Select(r => r.GIV_FinishedGoodId).Distinct().Count(),
+                TotalPallets = totalPallets,
+                TotalItems = totalItems,
+                CompletionPercentage = Math.Round(completionPercentage, 1),
+                PlannedReleaseDate = firstRelease.ReleaseDate
+            };
+
+            _logger.LogInformation("Job release details retrieved for JobId: {JobId}", jobId);
+            return dto;
+        }
+
+        public async Task<PaginatedResult<JobReleaseIndividualReleaseDto>> GetPaginatedJobReleaseIndividualReleasesAsync(
+            Guid jobId,
+            int start,
+            int length,
+            string? searchTerm,
+            int sortColumn,
+            bool sortAscending)
+        {
+            _logger.LogInformation("Fetching individual releases for JobId: {JobId} (start={Start}, length={Length})",
+                jobId, start, length);
+
+            // Build base query
+            var query = _dbContext.GIV_FG_Releases
+                .AsNoTracking()
+                .Include(r => r.GIV_FinishedGood)
+                .Include(r => r.GIV_FG_ReleaseDetails)
+                .Where(r => r.JobId == jobId && !r.IsDeleted);
+
+            // Apply search filter
+            if (!string.IsNullOrEmpty(searchTerm))
+            {
+                query = query.Where(r =>
+                    r.GIV_FinishedGood.SKU.Contains(searchTerm) ||
+                    (r.GIV_FinishedGood.Description != null && r.GIV_FinishedGood.Description.Contains(searchTerm)));
+            }
+
+            // Get counts
+            var totalCount = await query.CountAsync();
+            var filteredCount = totalCount;
+
+            // Apply sorting
+            var sortedQuery = sortColumn switch
+            {
+                0 => sortAscending ? query.OrderBy(r => r.GIV_FinishedGood.SKU) : query.OrderByDescending(r => r.GIV_FinishedGood.SKU),
+                1 => sortAscending ? query.OrderBy(r => r.GIV_FinishedGood.Description) : query.OrderByDescending(r => r.GIV_FinishedGood.Description),
+                2 => sortAscending ? query.OrderBy(r => r.ReleaseDate) : query.OrderByDescending(r => r.ReleaseDate),
+                _ => query.OrderBy(r => r.GIV_FinishedGood.SKU)
+            };
+
+            // Get paginated results
+            var releases = await sortedQuery
+                .Skip(start)
+                .Take(length)
+                .ToListAsync();
+
+            // Transform to DTOs
+            var individualReleaseDtos = new List<JobReleaseIndividualReleaseDto>();
+
+            foreach (var release in releases)
+            {
+                var details = release.GIV_FG_ReleaseDetails.Where(d => !d.IsDeleted).ToList();
+                var palletCount = details.Count(d => d.IsEntirePallet);
+                var itemCount = details.Count(d => !d.IsEntirePallet);
+
+                var status = release.ActualReleaseDate.HasValue ? "Completed" :
+                            (details.Any(d => d.ActualReleaseDate.HasValue) ? "Partially Released" :
+                            (release.ReleaseDate.Date <= DateTime.UtcNow.Date ? "Due for Release" : "Scheduled"));
+
+                var dto = new JobReleaseIndividualReleaseDto
+                {
+                    ReleaseId = release.Id,
+                    SKU = release.GIV_FinishedGood.SKU,
+                    FinishedGoodDescription = release.GIV_FinishedGood.Description ?? "",
+                    ReleaseDate = release.ReleaseDate,
+                    Status = status,
+                    StatusClass = GetReleaseStatusClass(status),
+                    PalletCount = palletCount,
+                    ItemCount = itemCount,
+                    IsCompleted = release.ActualReleaseDate.HasValue
+                };
+
+                individualReleaseDtos.Add(dto);
+            }
+
+            return new PaginatedResult<JobReleaseIndividualReleaseDto>
+            {
+                Items = individualReleaseDtos,
+                TotalCount = totalCount,
+                FilteredCount = filteredCount
+            };
+        }
+
+        public async Task<(byte[] fileContent, string fileName)> ExportJobReleaseToExcelAsync(Guid jobId)
+        {
+            _logger.LogInformation("Exporting job release to Excel for JobId: {JobId}", jobId);
+
+            var releases = await _dbContext.GIV_FG_Releases
+                .AsNoTracking()
+                .Include(r => r.GIV_FinishedGood)
+                .Include(r => r.GIV_FG_ReleaseDetails)
+                    .ThenInclude(d => d.GIV_FG_ReceivePallet)
+                        .ThenInclude(p => p.Location)
+                .Include(r => r.GIV_FG_ReleaseDetails)
+                    .ThenInclude(d => d.GIV_FG_ReceivePalletItem)
+                .Include(r => r.GIV_FG_ReleaseDetails)
+                    .ThenInclude(d => d.GIV_FG_Receive)
+                .Where(r => r.JobId == jobId && !r.IsDeleted)
+                .ToListAsync();
+
+            if (!releases.Any())
+            {
+                throw new InvalidOperationException($"No releases found for JobId: {jobId}");
+            }
+
+            // Prepare export data
+            ExcelPackage.License.SetNonCommercialOrganization("HSC WMS");
+            var exportData = new List<dynamic>();
+
+            foreach (var release in releases)
+            {
+                var details = release.GIV_FG_ReleaseDetails.Where(d => !d.IsDeleted).OrderBy(d => d.CreatedAt).ToList();
+
+                foreach (var detail in details)
+                {
+                    var row = new
+                    {
+                        ReleaseDate = release.ReleaseDate,
+                        SKU = release.GIV_FinishedGood.SKU,
+                        MHU = detail.GIV_FG_ReceivePallet?.PalletCode ?? "", // Pallet Code as MHU
+                        HU = detail.GIV_FG_ReceivePalletItem?.ItemCode ?? "", // Item Code as HU
+                        Batch = detail.GIV_FG_Receive?.BatchNo ?? "",
+                        Location = detail.GIV_FG_ReceivePallet?.Location?.Code ?? ""
+                    };
+
+                    exportData.Add(row);
+                }
+            }
+
+            // Generate Excel file
+            using var package = new ExcelPackage();
+            var worksheet = package.Workbook.Worksheets.Add("Job Release Details");
+
+            // Set headers
+            worksheet.Cells[1, 1].Value = "Release Date";
+            worksheet.Cells[1, 2].Value = "SKU";
+            worksheet.Cells[1, 3].Value = "MHU";
+            worksheet.Cells[1, 4].Value = "HU";
+            worksheet.Cells[1, 5].Value = "Batch";
+            worksheet.Cells[1, 6].Value = "Location";
+
+            // Style headers
+            using (var range = worksheet.Cells[1, 1, 1, 6])
+            {
+                range.Style.Font.Bold = true;
+                range.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                range.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+                range.Style.Border.BorderAround(OfficeOpenXml.Style.ExcelBorderStyle.Thin);
+            }
+
+            // Add data
+            for (int i = 0; i < exportData.Count; i++)
+            {
+                var row = exportData[i];
+                var rowIndex = i + 2; // Start from row 2 (after header)
+
+                worksheet.Cells[rowIndex, 1].Value = row.ReleaseDate.ToString("yyyy-MM-dd");
+                worksheet.Cells[rowIndex, 2].Value = row.SKU;
+                worksheet.Cells[rowIndex, 3].Value = row.MHU;
+                worksheet.Cells[rowIndex, 4].Value = row.HU;
+                worksheet.Cells[rowIndex, 5].Value = row.Batch;
+                worksheet.Cells[rowIndex, 6].Value = row.Location;
+
+                // Add borders to data rows
+                using (var range = worksheet.Cells[rowIndex, 1, rowIndex, 6])
+                {
+                    range.Style.Border.BorderAround(OfficeOpenXml.Style.ExcelBorderStyle.Thin);
+                }
+            }
+
+            // Auto-fit columns
+            worksheet.Cells[worksheet.Dimension.Address].AutoFitColumns();
+
+            // Generate file name
+            var fileName = $"FGJobRelease_{jobId.ToString().Substring(0, 8)}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+
+            _logger.LogInformation("Excel export completed for JobId: {JobId}, {RowCount} rows exported", jobId, exportData.Count);
+
+            return (package.GetAsByteArray(), fileName);
+        }
+
+        #endregion
+
+        #region JobRelease - Inventory and Available Items
+
+        public async Task<List<FinishedGoodForJobReleaseDto>> GetAvailableFinishedGoodsForJobReleaseAsync()
+        {
+            _logger.LogInformation("Fetching available finished goods for job release");
+
+            var finishedGoods = await _dbContext.GIV_FinishedGoods
+                .AsNoTracking()
+                .Include(fg => fg.FG_Receive)
+                    .ThenInclude(r => r.FG_ReceivePallets)
+                        .ThenInclude(p => p.FG_ReceivePalletItems)
+                .Where(fg => !fg.IsDeleted)
+                .ToListAsync();
+
+            var finishedGoodDtos = new List<FinishedGoodForJobReleaseDto>();
+
+            foreach (var finishedGood in finishedGoods)
+            {
+                // Calculate balance quantities
+                var allItems = finishedGood.FG_Receive
+                    .Where(r => !r.IsDeleted)
+                    .SelectMany(r => r.FG_ReceivePallets)
+                    .Where(p => !p.IsDeleted)
+                    .SelectMany(p => p.FG_ReceivePalletItems)
+                    .Where(i => !i.IsDeleted);
+
+                var balanceQty = allItems.Count(i => !i.IsReleased);
+                var balancePallets = finishedGood.FG_Receive
+                    .Where(r => !r.IsDeleted)
+                    .SelectMany(r => r.FG_ReceivePallets)
+                    .Where(p => !p.IsDeleted)
+                    .Count(p => p.FG_ReceivePalletItems.Any(i => !i.IsReleased));
+
+                var totalReceives = finishedGood.FG_Receive.Count(r => !r.IsDeleted);
+
+                // Only include finished goods that have available inventory
+                if (balanceQty > 0)
+                {
+                    finishedGoodDtos.Add(new FinishedGoodForJobReleaseDto
+                    {
+                        Id = finishedGood.Id,
+                        SKU = finishedGood.SKU,
+                        Description = finishedGood.Description,
+                        BalanceQty = balanceQty,
+                        BalancePallets = balancePallets,
+                        TotalReceives = totalReceives
+                    });
+                }
+            }
+
+            _logger.LogInformation("Found {Count} finished goods with available inventory", finishedGoodDtos.Count);
+            return finishedGoodDtos.OrderBy(fg => fg.SKU).ToList();
+        }
+
+        public async Task<List<JobReleaseInventoryDto>> GetFinishedGoodInventoryForJobReleaseAsync(List<Guid> finishedGoodIds)
+        {
+            _logger.LogInformation("Fetching inventory for {Count} finished goods", finishedGoodIds.Count);
+
+            var finishedGoods = await _dbContext.GIV_FinishedGoods
+                .AsNoTracking()
+                .Include(fg => fg.FG_Receive.Where(r => !r.IsDeleted))
+                    .ThenInclude(r => r.FG_ReceivePallets.Where(p => !p.IsDeleted))
+                        .ThenInclude(p => p.FG_ReceivePalletItems.Where(i => !i.IsDeleted))
+                .Where(fg => finishedGoodIds.Contains(fg.Id) && !fg.IsDeleted)
+                .ToListAsync();
+
+            var inventoryDtos = new List<JobReleaseInventoryDto>();
+
+            foreach (var finishedGood in finishedGoods)
+            {
+                var finishedGoodDto = new JobReleaseInventoryDto
+                {
+                    Id = finishedGood.Id,
+                    SKU = finishedGood.SKU,
+                    Description = finishedGood.Description
+                };
+
+                // Calculate totals
+                var allItems = finishedGood.FG_Receive
+                    .SelectMany(r => r.FG_ReceivePallets)
+                    .SelectMany(p => p.FG_ReceivePalletItems);
+
+                finishedGoodDto.TotalBalanceQty = allItems.Count(i => !i.IsReleased);
+                finishedGoodDto.TotalBalancePallet = finishedGood.FG_Receive
+                    .SelectMany(r => r.FG_ReceivePallets)
+                    .Count(p => p.FG_ReceivePalletItems.Any(i => !i.IsReleased));
+
+                // Process receives with available inventory
+                foreach (var receive in finishedGood.FG_Receive.Where(r => r.FG_ReceivePallets.Any(p => p.FG_ReceivePalletItems.Any(i => !i.IsReleased))))
+                {
+                    var receiveDto = new JobReleaseReceiveDto
+                    {
+                        Id = receive.Id,
+                        BatchNo = receive.BatchNo,
+                        ReceivedDate = receive.ReceivedDate,
+                        ReceivedBy = receive.ReceivedBy
+                    };
+
+                    // Process pallets with available items
+                    foreach (var pallet in receive.FG_ReceivePallets.Where(p => p.FG_ReceivePalletItems.Any(i => !i.IsReleased)).OrderBy(p => p.PalletCode))
+                    {
+                        var palletDto = new JobReleasePalletDto
+                        {
+                            Id = pallet.Id,
+                            PalletCode = pallet.PalletCode,
+                            IsReleased = pallet.IsReleased,
+                            HandledBy = pallet.HandledBy
+                        };
+
+                        // Process items
+                        foreach (var item in pallet.FG_ReceivePalletItems.OrderBy(i => i.ItemCode))
+                        {
+                            palletDto.Items.Add(new JobReleaseItemDto
+                            {
+                                Id = item.Id,
+                                ItemCode = item.ItemCode,
+                                IsReleased = item.IsReleased
+                            });
+                        }
+
+                        receiveDto.Pallets.Add(palletDto);
+                    }
+
+                    finishedGoodDto.Receives.Add(receiveDto);
+                }
+
+                inventoryDtos.Add(finishedGoodDto);
+            }
+
+            _logger.LogInformation("Prepared inventory data for {Count} finished goods", inventoryDtos.Count);
+            return inventoryDtos.OrderBy(fg => fg.SKU).ToList();
+        }
+
+        #endregion
+
+        #region JobRelease - Conflict Management
+
+        public async Task<FinishedGoodConflictResponse> GetFinishedGoodReleaseConflictsAsync(Guid finishedGoodId)
+        {
+            _logger.LogInformation("Checking release conflicts for FinishedGoodId: {FinishedGoodId}", finishedGoodId);
+
+            var conflicts = new List<FinishedGoodConflictItem>();
+
+            // Check for existing planned releases for this finished good
+            var existingReleases = await _dbContext.GIV_FG_Releases
+                .AsNoTracking()
+                .Include(r => r.GIV_FG_ReleaseDetails)
+                    .ThenInclude(d => d.GIV_FG_ReceivePallet)
+                .Include(r => r.GIV_FG_ReleaseDetails)
+                    .ThenInclude(d => d.GIV_FG_ReceivePalletItem)
+                .Where(r => r.GIV_FinishedGoodId == finishedGoodId && !r.IsDeleted && !r.ActualReleaseDate.HasValue)
+                .ToListAsync();
+
+            foreach (var release in existingReleases)
+            {
+                foreach (var detail in release.GIV_FG_ReleaseDetails.Where(d => !d.IsDeleted))
+                {
+                    if (detail.IsEntirePallet && detail.GIV_FG_ReceivePallet != null)
+                    {
+                        conflicts.Add(new FinishedGoodConflictItem
+                        {
+                            PalletId = detail.GIV_FG_ReceivePalletId,
+                            PalletCode = detail.GIV_FG_ReceivePallet.PalletCode,
+                            ExistingReleaseDate = release.ReleaseDate,
+                            ExistingJobId = release.JobId ?? release.Id,
+                            ConflictType = "Pallet"
+                        });
+                    }
+                    else if (!detail.IsEntirePallet && detail.GIV_FG_ReceivePalletItem != null)
+                    {
+                        conflicts.Add(new FinishedGoodConflictItem
+                        {
+                            PalletId = detail.GIV_FG_ReceivePalletId,
+                            PalletCode = detail.GIV_FG_ReceivePallet?.PalletCode ?? "",
+                            ItemId = detail.GIV_FG_ReceivePalletItemId,
+                            ItemCode = detail.GIV_FG_ReceivePalletItem.ItemCode,
+                            ExistingReleaseDate = release.ReleaseDate,
+                            ExistingJobId = release.JobId ?? release.Id,
+                            ConflictType = "Item"
+                        });
+                    }
+                }
+            }
+
+            var response = new FinishedGoodConflictResponse
+            {
+                HasConflicts = conflicts.Any(),
+                Conflicts = conflicts,
+                Message = conflicts.Any() ? $"Found {conflicts.Count} existing release conflicts" : "No conflicts found"
+            };
+
+            _logger.LogInformation("Conflict check completed for FinishedGoodId: {FinishedGoodId}, Conflicts: {ConflictCount}",
+                finishedGoodId, conflicts.Count);
+
+            return response;
+        }
+
+        public async Task<Dictionary<Guid, FinishedGoodConflictResponse>> GetBatchFinishedGoodReleaseConflictsAsync(List<Guid> finishedGoodIds)
+        {
+            _logger.LogInformation("Checking release conflicts for {Count} finished goods", finishedGoodIds.Count);
+
+            var result = new Dictionary<Guid, FinishedGoodConflictResponse>();
+
+            foreach (var finishedGoodId in finishedGoodIds)
+            {
+                var conflicts = await GetFinishedGoodReleaseConflictsAsync(finishedGoodId);
+                result[finishedGoodId] = conflicts;
+            }
+
+            _logger.LogInformation("Batch conflict check completed for {Count} finished goods", finishedGoodIds.Count);
+            return result;
+        }
+
+        #endregion
+
+        #region Helper Methods
+
+        private string GetJobStatus(List<GIV_FG_Release> releases, DateTime plannedReleaseDate)
+        {
+            var completedCount = releases.Count(r => r.ActualReleaseDate.HasValue);
+            var totalCount = releases.Count;
+            var hasOverdue = releases.Any(r => !r.ActualReleaseDate.HasValue && r.ReleaseDate.Date < DateTime.UtcNow.Date);
+
+            if (completedCount == totalCount)
+                return "Completed";
+
+            if (hasOverdue)
+                return "Overdue";
+
+            if (completedCount > 0)
+                return "In Progress";
+
+            if (plannedReleaseDate.Date <= DateTime.UtcNow.Date)
+                return "Due for Release";
+
+            return "Scheduled";
+        }
+
+        private (string Status, string StatusClass) GetJobStatusWithClass(List<GIV_FG_Release> releases, DateTime plannedReleaseDate)
+        {
+            var status = GetJobStatus(releases, plannedReleaseDate);
+            var statusClass = status.ToLower() switch
+            {
+                "completed" => "status-completed",
+                "overdue" => "status-overdue",
+                "in progress" => "status-in-progress",
+                "due for release" => "status-due",
+                "scheduled" => "status-scheduled",
+                _ => "status-scheduled"
+            };
+
+            return (status, statusClass);
+        }
+
+        private string GetReleaseStatusClass(string status)
+        {
+            return status.ToLower() switch
+            {
+                "completed" => "status-completed",
+                "partially released" => "status-in-progress",
+                "due for release" => "status-due",
+                "scheduled" => "status-scheduled",
+                _ => "status-scheduled"
+            };
+        }
+
+        #endregion
 
     }
 }

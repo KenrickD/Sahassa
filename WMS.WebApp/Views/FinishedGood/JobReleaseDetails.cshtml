@@ -1,0 +1,463 @@
+﻿@model WMS.Domain.DTOs.GIV_FinishedGood.Web.JobReleaseDetailsDto
+@{
+    ViewData["Title"] = "Finished Good Job Release Details";
+}
+@Html.AntiForgeryToken()
+
+<div class="card p-3 mb-4">
+    <div class="flex justify-between items-center">
+        <div>
+            <h4>Job ID: @Model.JobIdShort</h4>
+            <p><strong>Full Job ID:</strong> <span class="font-mono text-sm">@Model.JobId</span></p>
+            <p><strong>Created:</strong> @Model.CreatedDate.ToString("yyyy-MM-dd HH:mm")</p>
+            <p><strong>Created By:</strong> @Model.CreatedByDisplay</p>
+            <p><strong>Planned Release Date:</strong> @Model.PlannedReleaseDate.ToString("yyyy-MM-dd")</p>
+            <p><strong>Status:</strong> <span class="@Model.StatusClass">@Model.StatusText</span></p>
+        </div>
+        <div class="flex gap-2">
+            <button id="export-excel-btn" class="btn btn-success">
+                <iconify-icon icon="mdi:file-excel-outline"></iconify-icon>
+                Export to Excel
+            </button>
+            <a href="@Url.Action("JobReleases")" class="btn btn-secondary">
+                <iconify-icon icon="lucide:arrow-left"></iconify-icon>
+                Back to Job Releases
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Job Summary Cards -->
+<div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+    <div class="card p-4 text-center bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+        <h5 class="text-blue-700 dark:text-blue-300 text-sm font-medium mb-2">Finished Goods</h5>
+        <div class="text-2xl font-bold text-blue-800 dark:text-blue-200">@Model.FinishedGoodCount</div>
+        <div class="text-xs text-blue-600 dark:text-blue-400 mt-1">SKUs</div>
+    </div>
+    <div class="card p-4 text-center bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+        <h5 class="text-green-700 dark:text-green-300 text-sm font-medium mb-2">Total Pallets</h5>
+        <div class="text-2xl font-bold text-green-800 dark:text-green-200">@Model.TotalPallets</div>
+        <div class="text-xs text-green-600 dark:text-green-400 mt-1">Entire Pallets</div>
+    </div>
+    <div class="card p-4 text-center bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800">
+        <h5 class="text-purple-700 dark:text-purple-300 text-sm font-medium mb-2">Total Items</h5>
+        <div class="text-2xl font-bold text-purple-800 dark:text-purple-200">@Model.TotalItems</div>
+        <div class="text-xs text-purple-600 dark:text-purple-400 mt-1">Individual Items</div>
+    </div>
+    @* <div class="card p-4 text-center bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800">
+        <h5 class="text-orange-700 dark:text-orange-300 text-sm font-medium mb-2">Completion</h5>
+        <div class="text-2xl font-bold text-orange-800 dark:text-orange-200">@Model.CompletionDisplay</div>
+        <div class="text-xs text-orange-600 dark:text-orange-400 mt-1">Progress</div>
+    </div> *@
+    <div class="card p-4 text-center bg-gray-50 dark:bg-gray-900/20 border-gray-200 dark:border-gray-800">
+        <h5 class="text-gray-700 dark:text-gray-300 text-sm font-medium mb-2">Status</h5>
+        <div class="text-lg font-bold">
+            <span class="@Model.StatusClass px-2 py-1 rounded text-sm">@Model.StatusText</span>
+        </div>
+        <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">Current State</div>
+    </div>
+</div>
+
+<!-- Progress Bar -->
+@* <div class="card p-4 mb-6">
+    <h5 class="mb-3">Job Progress</h5>
+    <div class="progress-container">
+        <div class="progress-bar-large">
+            <div class="progress-fill" style="width: @Model.CompletionPercentage%">
+                <span class="progress-text">@Model.CompletionDisplay</span>
+            </div>
+        </div>
+        <div class="flex justify-between text-sm text-gray-600 dark:text-gray-400 mt-2">
+            <span>Started</span>
+            <span>@Model.CompletionDisplay Complete</span>
+            <span>Finished</span>
+        </div>
+    </div>
+</div> *@
+
+<!-- Individual Releases in Job -->
+<div class="card">
+    <div class="card-header">
+        <div class="flex justify-between items-center">
+            <h5 class="card-title">Individual Releases in this Job</h5>
+            <div class="text-sm text-gray-600 dark:text-gray-400">
+                <iconify-icon icon="lucide:info" class="mr-1"></iconify-icon>
+                <span class="hidden md:inline">Search by SKU, description, or status</span>
+                <span class="md:hidden">Advanced search available</span>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        <table id="job-release-details-table" class="table table-striped" data-job-id="@Model.JobId">
+            <thead>
+                <tr>
+                    <th>SKU</th>
+                    <th>Description</th>
+                    <th>Release Date</th>
+                    <th>Status</th>
+                    <th>Release Type</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- DataTables will populate this -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+    .progress-bar-large {
+        width: 100%;
+        height: 24px;
+        background-color: #e5e7eb;
+        border-radius: 12px;
+        overflow: hidden;
+        position: relative;
+        border: 1px solid #d1d5db;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #10b981, #059669);
+        border-radius: 12px;
+        transition: width 0.8s ease;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .progress-text {
+        color: white;
+        font-weight: 600;
+        font-size: 0.875rem;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+
+    .status-scheduled {
+        background-color: #dbeafe;
+        color: #1e40af;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    .status-in-progress {
+        background-color: #fef3c7;
+        color: #d97706;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    .status-completed {
+        background-color: #d1fae5;
+        color: #059669;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    .status-overdue {
+        background-color: #fee2e2;
+        color: #dc2626;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    .status-due {
+        background-color: #fdf4ff;
+        color: #a21caf;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    /* Dark mode styles */
+    .dark .status-scheduled {
+        background-color: rgba(59, 130, 246, 0.2);
+        color: #93c5fd;
+    }
+
+    .dark .status-in-progress {
+        background-color: rgba(245, 158, 11, 0.2);
+        color: #fbbf24;
+    }
+
+    .dark .status-completed {
+        background-color: rgba(16, 185, 129, 0.2);
+        color: #6ee7b7;
+    }
+
+    .dark .status-overdue {
+        background-color: rgba(239, 68, 68, 0.2);
+        color: #fca5a5;
+    }
+
+    .dark .status-due {
+        background-color: rgba(168, 85, 247, 0.2);
+        color: #c4b5fd;
+    }
+
+    .dark .progress-bar-large {
+        background-color: #374151;
+        border-color: #4b5563;
+    }
+
+    .dark .table {
+        color: #e5e7eb;
+    }
+
+    .dark .card {
+        background-color: #1f2937;
+        border-color: #374151;
+    }
+
+    .dark .card-header {
+        background-color: #111827;
+        border-color: #374151;
+    }
+
+    /* DataTables dark mode */
+    .dark .dataTables_wrapper .dataTables_filter input,
+    .dark .dataTables_wrapper .dataTables_length select {
+        background-color: #374151;
+        border-color: #4b5563;
+        color: white;
+    }
+
+    .dark .dataTables_wrapper .dataTables_info,
+    .dark .dataTables_wrapper .dataTables_paginate {
+        color: #e5e7eb;
+    }
+
+    /* Animate cards on load */
+    .card {
+        animation: fadeInUp 0.5s ease-out;
+    }
+
+    @@keyframes fadeInUp {
+        from
+
+    {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    }
+
+    /* Delay animation for each card */
+    .card:nth-child(1) {
+        animation-delay: 0.1s;
+    }
+
+    .card:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+
+    .card:nth-child(3) {
+        animation-delay: 0.3s;
+    }
+
+    .card:nth-child(4) {
+        animation-delay: 0.4s;
+    }
+
+    .card:nth-child(5) {
+        animation-delay: 0.5s;
+    }
+</style>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            initJobReleaseDetailsTable();
+            animateProgressBar();
+            setupExcelExport();
+        });
+
+        function initJobReleaseDetailsTable() {
+            const jobId = document.getElementById("job-release-details-table").dataset.jobId;
+            const token = $('input[name="__RequestVerificationToken"]').val();
+
+            // Check if dark mode is active
+            const isDarkMode = document.documentElement.classList.contains('dark') ||
+                document.body.classList.contains('dark');
+
+            $('#job-release-details-table').DataTable({
+                processing: true,
+                serverSide: true,
+                ajax: {
+                    url: `@Url.Action("GetPaginatedJobReleaseDetails", "FinishedGood")?jobId=${jobId}`,
+                    type: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': token
+                    },
+                    contentType: 'application/json',
+                    data: function(d) {
+                        return JSON.stringify(d);
+                    },
+                    error: function(xhr, error, code) {
+                        console.error('DataTables error:', error, code);
+                        toastr.error('Failed to load job release details');
+                    }
+                },
+                columns: [
+                    {
+                        data: 'sku',
+                        name: 'SKU',
+                        render: function(data, type, row) {
+                            if (type === 'display') {
+                                return `<span class="font-mono text-sm font-semibold text-blue-600 dark:text-blue-400">${data}</span>`;
+                            }
+                            return data;
+                        }
+                    },
+                    {
+                        data: 'finishedGoodDescription',
+                        name: 'FinishedGoodDescription'
+                    },
+                    {
+                        data: 'releaseDate',
+                        name: 'ReleaseDate',
+                        render: function(data, type, row) {
+                            if (type === 'display') {
+                                const date = new Date(data);
+                                return date.toLocaleDateString();
+                            }
+                            return data;
+                        }
+                    },
+                    {
+                        data: 'status',
+                        name: 'Status',
+                        className: 'text-center',
+                        render: function(data, type, row) {
+                            if (type === 'display') {
+                                const statusClass = getStatusClass(data);
+                                return `<span class="${statusClass}">${data}</span>`;
+                            }
+                            return data;
+                        }
+                    },
+                    {
+                        data: 'releaseTypeText',
+                        name: 'ReleaseType',
+                        className: 'text-center'
+                    },
+                    {
+                        data: null,
+                        orderable: false,
+                        searchable: false,
+                        render: function(data, type, row) {
+                            return `
+                                <button class="btn btn-sm btn-primary" onclick="viewIndividualReleaseDetails('${row.releaseId}')">
+                                    <iconify-icon icon="lucide:eye"></iconify-icon>
+                                    View Details
+                                </button>
+                            `;
+                        }
+                    }
+                ],
+                order: [[2, 'asc']], // Sort by Release Date ascending
+                pageLength: 25,
+                lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+                responsive: true,
+                language: {
+                    search: "",
+                    searchPlaceholder: "Search releases...",
+                    lengthMenu: "_MENU_ per page",
+                    info: "Showing _START_ to _END_ of _TOTAL_ releases",
+                    paginate: {
+                        first: '<iconify-icon icon="heroicons-outline:chevron-double-left"></iconify-icon>',
+                        last: '<iconify-icon icon="heroicons-outline:chevron-double-right"></iconify-icon>',
+                        next: '<iconify-icon icon="heroicons-outline:chevron-right"></iconify-icon>',
+                        previous: '<iconify-icon icon="heroicons-outline:chevron-left"></iconify-icon>'
+                    },
+                    zeroRecords: "No releases found in this job",
+                    emptyTable: "No release data available"
+                },
+                initComplete: function() {
+                    if (isDarkMode) {
+                        $('.dataTables_filter input').addClass('bg-gray-700 border-gray-600 text-white');
+                        $('.dataTables_length select').addClass('bg-gray-700 border-gray-600 text-white');
+                        $(this).closest('.dataTables_wrapper').addClass('dark-mode-table');
+                    }
+                }
+            });
+        }
+
+        function getStatusClass(status) {
+            switch (status.toLowerCase()) {
+                case 'scheduled':
+                    return 'status-scheduled';
+                case 'partially released':
+                    return 'status-in-progress';
+                case 'completed':
+                    return 'status-completed';
+                case 'due for release':
+                    return 'status-due';
+                default:
+                    return 'status-scheduled';
+            }
+        }
+
+        function animateProgressBar() {
+            // Animate progress bar on load
+            setTimeout(() => {
+                const progressFill = document.querySelector('.progress-fill');
+                if (progressFill) {
+                    const width = progressFill.style.width;
+                    progressFill.style.width = '0%';
+                    setTimeout(() => {
+                        progressFill.style.width = width;
+                    }, 100);
+                }
+            }, 500);
+        }
+        function viewIndividualReleaseDetails(releaseId) {
+            // Open in new tab
+            window.open(`/FinishedGood/ReleaseDetails/${releaseId}`, '_blank');
+        }
+
+        function setupExcelExport() {
+            const jobId = document.getElementById("job-release-details-table").dataset.jobId;
+
+            $('#export-excel-btn').on('click', function() {
+                const button = $(this);
+                const originalText = button.html();
+
+                // Show loading state
+                button.html('<iconify-icon icon="eos-icons:loading"></iconify-icon> Exporting...');
+                button.prop('disabled', true);
+
+                // Create a temporary link to download the file
+                const downloadLink = document.createElement('a');
+                downloadLink.href = `@Url.Action("ExportJobReleaseExcel", "FinishedGood")?jobId=${jobId}`;
+                downloadLink.download = '';
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                document.body.removeChild(downloadLink);
+
+                // Reset button after a short delay
+                setTimeout(() => {
+                    button.html(originalText);
+                    button.prop('disabled', false);
+                    toastr.success('Excel export completed successfully');
+                }, 2000);
+            });
+        }
+    </script>
+}

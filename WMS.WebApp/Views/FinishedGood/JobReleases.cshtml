@@ -1,0 +1,333 @@
+﻿@{
+    ViewData["Title"] = "Finished Good Job Releases";
+}
+@Html.AntiForgeryToken()
+
+<div class="card">
+    <div class="card-header">
+        <div class="flex justify-between items-center">
+            <h5 class="card-title">Finished Good Job Releases</h5>
+            <div class="text-sm text-gray-600 dark:text-gray-400">
+                <iconify-icon icon="lucide:info" class="mr-1"></iconify-icon>
+                <span class="hidden md:inline">Search by job ID, created by, SKU, or status</span>
+                <span class="md:hidden">Advanced search available</span>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        <table id="job-releases-table" class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Job ID</th>
+                    <th>Planned Date</th>
+                    <th>Created By</th>
+                    <th>Finished Goods</th>
+                    <th>Pallets</th>
+                    <th>Items</th>
+                    <th>Status</th>
+                    @* <th>Progress</th> *@
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- DataTables will populate this -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+    <style >
+    /* Progress bar styles */
+    .progress {
+        height: 20px;
+        background-color: #f3f4f6;
+        border-radius: 10px;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #3b82f6 0%, #10b981 100%);
+        transition: width 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    /* Status badge styles */
+    .status-scheduled {
+        background-color: #dbeafe;
+        color: #1e40af;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .status-in-progress {
+        background-color: #fef3c7;
+        color: #92400e;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .status-completed {
+        background-color: #d1fae5;
+        color: #065f46;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .status-overdue {
+        background-color: #fee2e2;
+        color: #991b1b;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    /* Dark mode adjustments */
+    .dark .status-scheduled {
+        background-color: rgba(59, 130, 246, 0.2);
+        color: #93c5fd;
+    }
+
+    .dark .status-in-progress {
+        background-color: rgba(245, 158, 11, 0.2);
+        color: #fbbf24;
+    }
+
+    .dark .status-completed {
+        background-color: rgba(16, 185, 129, 0.2);
+        color: #6ee7b7;
+    }
+
+    .dark .status-overdue {
+        background-color: rgba(239, 68, 68, 0.2);
+        color: #fca5a5;
+    }
+
+    .dark .progress {
+        background-color: #374151;
+    }
+
+    .dark .table {
+        color: #e5e7eb;
+    }
+
+    .dark .card {
+        background-color: #1f2937;
+        border-color: #374151;
+    }
+
+    .dark .card-header {
+        background-color: #111827;
+        border-color: #374151;
+    }
+
+    /* DataTables dark mode */
+    .dark .dataTables_wrapper .dataTables_filter input,
+    .dark .dataTables_wrapper .dataTables_length select {
+        background-color: #374151;
+        border-color: #4b5563;
+        color: white;
+    }
+
+    .dark .dataTables_wrapper .dataTables_info,
+    .dark .dataTables_wrapper .dataTables_paginate {
+        color: #e5e7eb;
+    }
+</style>
+</style>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            initJobReleasesTable();
+        });
+
+        function initJobReleasesTable() {
+            const token = $('input[name="__RequestVerificationToken"]').val();
+
+            // Check if dark mode is active
+            const isDarkMode = document.documentElement.classList.contains('dark') ||
+                document.body.classList.contains('dark');
+
+            $('#job-releases-table').DataTable({
+                processing: true,
+                serverSide: true,
+                ajax: {
+                    url: '@Url.Action("GetPaginatedJobReleases", "FinishedGood")',
+                    type: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': token
+                    },
+                    contentType: 'application/json',
+                    data: function(d) {
+                        return JSON.stringify(d);
+                    },
+                    error: function(xhr, error, code) {
+                        console.error('DataTables error:', error, code);
+                        toastr.error('Failed to load job releases');
+                    }
+                },
+                columns: [
+                    {
+                        data: 'jobIdShort',
+                        name: 'JobId',
+                        render: function(data, type, row) {
+                            if (type === 'display') {
+                                return `<span class="font-mono text-sm font-semibold text-blue-600 dark:text-blue-400">${data}</span>`;
+                            }
+                            return data;
+                        }
+                    },
+                    {
+                        data: 'plannedReleaseDate',
+                        name: 'PlannedReleaseDate',
+                        render: function(data, type, row) {
+                            if (type === 'display') {
+                                const date = new Date(data);
+                                return date.toLocaleDateString();
+                            }
+                            return data;
+                        }
+                    },
+                    {
+                        data: 'createdByDisplay',
+                        name: 'CreatedBy'
+                    },
+                    {
+                        data: 'finishedGoodCount',
+                        name: 'FinishedGoodCount',
+                        className: 'text-center',
+                        render: function(data, type, row) {
+                            if (type === 'display') {
+                                return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">${data}</span>`;
+                            }
+                            return data;
+                        }
+                    },
+                    {
+                        data: 'totalPallets',
+                        className: 'text-center'
+                    },
+                    {
+                        data: 'totalItems',
+                        className: 'text-center'
+                    },
+                    {
+                        data: 'jobStatus',
+                        name: 'JobStatus',
+                        className: 'text-center',
+                        render: function(data, type, row) {
+                            if (type === 'display') {
+                                const statusClass = getJobStatusClass(data);
+                                return `<span class="${statusClass}">${data}</span>`;
+                            }
+                            return data;
+                        }
+                    },
+                    // {
+                    //     data: 'completionPercentage',
+                    //     name: 'CompletionPercentage',
+                    //     className: 'text-center',
+                    //     render: function(data, type, row) {
+                    //         if (type === 'display') {
+                    //             return `
+                    //                 <div class="flex flex-col items-center">
+                    //                     <div class="progress-bar-small">
+                    //                         <div class="progress-fill-small" style="width: ${data}%"></div>
+                    //                     </div>
+                    //                     <span class="text-xs text-gray-600 dark:text-gray-400 mt-1">${data}%</span>
+                    //                 </div>
+                    //             `;
+                    //         }
+                    //         return data;
+                    //     }
+                    // },
+                    {
+                        data: 'jobId',
+                        name: 'Actions',
+                        orderable: false,
+                        searchable: false,
+                        className: 'text-center',
+                        render: function(data, type, row) {
+                            return `
+                                <button type="button" class="btn btn-primary btn-sm" onclick="viewJobReleaseDetails('${data}')">
+                                    <iconify-icon icon="lucide:eye"></iconify-icon>
+                                    View Details
+                                </button>
+                            `;
+                        }
+                    }
+                ],
+                order: [[1, 'desc']], // Sort by Planned Date descending by default
+                pageLength: 25,
+                lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+                responsive: true,
+                language: {
+                    search: "",
+                    searchPlaceholder: "Search job releases...",
+                    lengthMenu: "_MENU_ per page",
+                    info: "Showing _START_ to _END_ of _TOTAL_ job releases",
+                    paginate: {
+                        first: '<iconify-icon icon="heroicons-outline:chevron-double-left"></iconify-icon>',
+                        last: '<iconify-icon icon="heroicons-outline:chevron-double-right"></iconify-icon>',
+                        next: '<iconify-icon icon="heroicons-outline:chevron-right"></iconify-icon>',
+                        previous: '<iconify-icon icon="heroicons-outline:chevron-left"></iconify-icon>'
+                    },
+                    zeroRecords: "No job releases found",
+                    emptyTable: "No job release data available"
+                },
+                initComplete: function() {
+                    if (isDarkMode) {
+                        $('.dataTables_filter input').addClass('bg-gray-700 border-gray-600 text-white');
+                        $('.dataTables_length select').addClass('bg-gray-700 border-gray-600 text-white');
+                        $(this).closest('.dataTables_wrapper').addClass('dark-mode-table');
+                    }
+                }
+            });
+        }
+
+        function getJobStatusClass(status) {
+            switch (status.toLowerCase()) {
+                case 'scheduled':
+                    return 'status-scheduled';
+                case 'in progress':
+                    return 'status-in-progress';
+                case 'completed':
+                    return 'status-completed';
+                case 'overdue':
+                    return 'status-overdue';
+                case 'due for release':
+                    return 'status-due';
+                default:
+                    return 'status-scheduled';
+            }
+        }
+
+        function viewJobReleaseDetails(jobId) {
+            window.location.href = `/FinishedGood/JobReleaseDetails/${jobId}`;
+        }
+
+        // Show success message if redirected from job creation
+        $(document).ready(function() {
+            const successMessage = sessionStorage.getItem("jobReleaseSuccessMessage");
+            if (successMessage) {
+                toastr.success(successMessage);
+                sessionStorage.removeItem("jobReleaseSuccessMessage");
+            }
+        });
+    </script>
+}
