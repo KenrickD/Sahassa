@@ -3,14 +3,19 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using WMS.Domain.DTOs.GIV_RawMaterial.Web;
 
 namespace WMS.Domain.DTOs.GIV_FinishedGood.Web
 {
     public class FinishedGoodConflictResponse
     {
+        // Change from List<FinishedGoodConflictItem> to Dictionary structure like raw material
+        public Dictionary<Guid, ConflictInfo> Pallets { get; set; } = new Dictionary<Guid, ConflictInfo>();
+        public Dictionary<Guid, ConflictInfo> Items { get; set; } = new Dictionary<Guid, ConflictInfo>();
+
+        // Keep these for backward compatibility if needed
         public bool HasConflicts { get; set; }
-        public List<FinishedGoodConflictItem> Conflicts { get; set; } = new List<FinishedGoodConflictItem>();
-        public string? Message { get; set; }
+        public string Message { get; set; } = string.Empty;
     }
 
     public class FinishedGoodConflictItem

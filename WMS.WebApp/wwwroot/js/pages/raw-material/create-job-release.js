@@ -1368,10 +1368,24 @@ function applyPalletConflictStyling(palletCheckbox, conflict) {
     label.classList.add('conflict-highlighted');
     palletCard.classList.add('pallet-conflict');
 
-    // Disable and uncheck checkbox - make it non-interactive
-    palletCheckbox.disabled = true;
-    palletCheckbox.checked = false;
-    palletCheckbox.style.pointerEvents = 'none'; // Extra protection against interaction
+    // Check if this is an already released item
+    const isAlreadyReleased = palletCheckbox.dataset.released === 'true';
+    console.log(`🔍 Pallet released status: ${palletCheckbox.dataset.released}, isAlreadyReleased: ${isAlreadyReleased}`);
+
+    if (isAlreadyReleased) {
+        // For already released items: keep them checked but disable interaction
+        palletCheckbox.checked = true;  // Keep checked
+        palletCheckbox.disabled = true; // Keep disabled
+        console.log('🔒 Pallet is already released - keeping checked and disabled');
+    } else {
+        // For conflict items: uncheck and disable
+        palletCheckbox.checked = false;
+        palletCheckbox.disabled = true;
+        console.log('⚠️ Pallet has conflict - unchecking and disabling');
+    }
+
+    // Make it non-interactive regardless
+    palletCheckbox.style.pointerEvents = 'none';
 
     // Also disable the label to prevent clicking
     label.style.pointerEvents = 'none';
@@ -1400,10 +1414,24 @@ function applyItemConflictStyling(itemCheckbox, conflict) {
     label.classList.add('conflict-highlighted');
     listItem.classList.add('item-conflict');
 
-    // Disable and uncheck checkbox - make it non-interactive
-    itemCheckbox.disabled = true;
-    itemCheckbox.checked = false;
-    itemCheckbox.style.pointerEvents = 'none'; // Extra protection against interaction
+    //Check if this is an already released item
+    const isAlreadyReleased = itemCheckbox.dataset.released === 'true';
+    console.log(`🔍 Item released status: ${itemCheckbox.dataset.released}, isAlreadyReleased: ${isAlreadyReleased}`);
+
+    if (isAlreadyReleased) {
+        // For already released items: keep them checked but disable interaction
+        itemCheckbox.checked = true;  // Keep checked
+        itemCheckbox.disabled = true; // Keep disabled
+        console.log('🔒 Item is already released - keeping checked and disabled');
+    } else {
+        // For conflict items: uncheck and disable
+        itemCheckbox.checked = false;
+        itemCheckbox.disabled = true;
+        console.log('⚠️ Item has conflict - unchecking and disabling');
+    }
+
+    // Make it non-interactive regardless
+    itemCheckbox.style.pointerEvents = 'none';
 
     // Also disable the label to prevent clicking
     label.style.pointerEvents = 'none';

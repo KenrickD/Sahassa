@@ -25,7 +25,8 @@ using WMS.Domain.DTOs.GIV_FG_ReceivePalletPhoto;
 using WMS.Domain.DTOs.GIV_FinishedGood;
 using WMS.Domain.DTOs.GIV_FinishedGood.Web;
 using WMS.Domain.DTOs.GIV_Invoicing;
-using WMS.Domain.DTOs.GIV_RawMaterial;
+
+
 //using WMS.Domain.DTOs.GIV_RawMaterial.Web;
 using WMS.Domain.DTOs.GIV_RM_Receive;
 using WMS.Domain.DTOs.GIV_RM_ReceivePallet;
@@ -2524,7 +2525,11 @@ namespace WMS.Application.Services
         {
             _logger.LogInformation("Checking release conflicts for FinishedGoodId: {FinishedGoodId}", finishedGoodId);
 
-            var conflicts = new List<FinishedGoodConflictItem>();
+            var response = new FinishedGoodConflictResponse
+            {
+                Pallets = new Dictionary<Guid, ConflictInfo>(),
+                Items = new Dictionary<Guid, ConflictInfo>()
+            };
 
             // Check for existing planned releases for this finished good
             var existingReleases = await _dbContext.GIV_FG_Releases
@@ -2542,44 +2547,61 @@ namespace WMS.Application.Services
                 {
                     if (detail.IsEntirePallet && detail.GIV_FG_ReceivePallet != null)
                     {
-                        conflicts.Add(new FinishedGoodConflictItem
+                        var palletId = detail.GIV_FG_ReceivePalletId;
+
+                        // Add to Pallets dictionary
+                        response.Pallets[palletId] = new ConflictInfo
                         {
-                            PalletId = detail.GIV_FG_ReceivePalletId,
-                            PalletCode = detail.GIV_FG_ReceivePallet.PalletCode,
-                            ExistingReleaseDate = release.ReleaseDate,
-                            ExistingJobId = release.JobId ?? release.Id,
-                            ConflictType = "Pallet"
-                        });
+                            Type = "EntirePalletScheduled",
+                            JobId = release.JobId ?? release.Id,
+                            PalletCode = detail.GIV_FG_ReceivePallet.PalletCode
+                        };
+
+                        // Also mark all items in this pallet as conflicted
+                        var palletItems = await _dbContext.GIV_FG_ReceivePalletItems
+                            .Where(i => i.GIV_FG_ReceivePalletId == palletId && !i.IsDeleted)
+                            .ToListAsync();
+
+                        foreach (var item in palletItems)
+                        {
+                            response.Items[item.Id] = new ConflictInfo
+                            {
+                                Type = "ParentPalletScheduled",
+                                JobId = release.JobId ?? release.Id,
+                                PalletCode = detail.GIV_FG_ReceivePallet.PalletCode,
+                                ItemCode = item.ItemCode
+                            };
+                        }
                     }
-                    else if (!detail.IsEntirePallet && detail.GIV_FG_ReceivePalletItem != null)
+                    else if (!detail.IsEntirePallet && detail.GIV_FG_ReceivePalletItem != null && detail.GIV_FG_ReceivePalletItemId.HasValue)
                     {
-                        conflicts.Add(new FinishedGoodConflictItem
+                        var itemId = detail.GIV_FG_ReceivePalletItemId.Value;
+
+                        // Add to Items dictionary
+                        response.Items[itemId] = new ConflictInfo
                         {
-                            PalletId = detail.GIV_FG_ReceivePalletId,
+                            Type = "ItemScheduled",
+                            JobId = release.JobId ?? release.Id,
                             PalletCode = detail.GIV_FG_ReceivePallet?.PalletCode ?? "",
-                            ItemId = detail.GIV_FG_ReceivePalletItemId,
-                            ItemCode = detail.GIV_FG_ReceivePalletItem.ItemCode,
-                            ExistingReleaseDate = release.ReleaseDate,
-                            ExistingJobId = release.JobId ?? release.Id,
-                            ConflictType = "Item"
-                        });
+                            ItemCode = detail.GIV_FG_ReceivePalletItem.ItemCode
+                        };
                     }
                 }
             }
 
-            var response = new FinishedGoodConflictResponse
-            {
-                HasConflicts = conflicts.Any(),
-                Conflicts = conflicts,
-                Message = conflicts.Any() ? $"Found {conflicts.Count} existing release conflicts" : "No conflicts found"
-            };
+            // Set backward compatibility properties
+            response.HasConflicts = response.Pallets.Any() || response.Items.Any();
+            response.Message = response.HasConflicts
+                ? $"Found {response.Pallets.Count} pallet conflicts and {response.Items.Count} item conflicts"
+                : "No conflicts found";
 
-            _logger.LogInformation("Conflict check completed for FinishedGoodId: {FinishedGoodId}, Conflicts: {ConflictCount}",
-                finishedGoodId, conflicts.Count);
+            _logger.LogInformation("Conflict check completed for FinishedGoodId: {FinishedGoodId}, Pallet Conflicts: {PalletCount}, Item Conflicts: {ItemCount}",
+                finishedGoodId, response.Pallets.Count, response.Items.Count);
 
             return response;
         }
 
+        // 4. UPDATE: GetBatchFinishedGoodReleaseConflictsAsync method (keep as-is, it should work now)
         public async Task<Dictionary<Guid, FinishedGoodConflictResponse>> GetBatchFinishedGoodReleaseConflictsAsync(List<Guid> finishedGoodIds)
         {
             _logger.LogInformation("Checking release conflicts for {Count} finished goods", finishedGoodIds.Count);
@@ -2668,6 +2690,328 @@ namespace WMS.Application.Services
         }
 
         #endregion
+        #region JobRelease - Create and Validate
 
+        public async Task<ServiceWebResult> CreateJobReleaseAsync(WMS.Domain.DTOs.GIV_FinishedGood.Web.JobReleaseCreateDto dto, string userId)
+        {
+            _logger.LogInformation("Creating finished good job release for user {UserId} with {FinishedGoodCount} finished goods",
+                userId, dto.FinishedGoods.Count);
+
+            using var transaction = await _dbContext.Database.BeginTransactionAsync();
+
+            try
+            {
+                // Generate a unique JobId for this release
+                var jobId = Guid.NewGuid();
+                var allReleases = new List<GIV_FG_Release>();
+
+                // Pre-load all pallet and item data to avoid multiple queries
+                var allPalletIds = dto.FinishedGoods
+                    .SelectMany(fg => fg.Receives)
+                    .SelectMany(r => r.Pallets)
+                    .Select(p => p.PalletId)
+                    .Distinct()
+                    .ToList();
+
+                var allItemIds = dto.FinishedGoods
+                    .SelectMany(fg => fg.Receives)
+                    .SelectMany(r => r.Items)
+                    .Select(i => i.ItemId)
+                    .Distinct()
+                    .ToList();
+
+                // Load pallets with their items in one query
+                var palletLookup = await _dbContext.GIV_FG_ReceivePallets
+                    .Include(p => p.FG_ReceivePalletItems)
+                    .Where(p => allPalletIds.Contains(p.Id) && !p.IsDeleted)
+                    .ToDictionaryAsync(p => p.Id, p => p);
+
+                // Load individual items
+                var itemLookup = await _dbContext.GIV_FG_ReceivePalletItems
+                    .Include(i => i.GIV_FG_ReceivePallet)
+                    .Where(i => allItemIds.Contains(i.Id) && !i.IsDeleted)
+                    .ToDictionaryAsync(i => i.Id, i => i);
+
+                // Process each finished good
+                foreach (var finishedGood in dto.FinishedGoods)
+                {
+                    foreach (var receive in finishedGood.Receives)
+                    {
+                        // Create release record for this receive
+                        var releaseRecord = new GIV_FG_Release
+                        {
+                            Id = Guid.NewGuid(),
+                            GIV_FinishedGoodId = finishedGood.FinishedGoodId,
+                            ReleaseDate = DateTime.SpecifyKind(receive.ReleaseDate, DateTimeKind.Utc),
+                            ReleasedBy = userId,
+                            JobId = jobId,
+                            Remarks = dto.JobRemarks,
+                            WarehouseId = _currentUserService.CurrentWarehouseId,
+                            CreatedAt = DateTime.UtcNow,
+                            CreatedBy = userId,
+                            GIV_FG_ReleaseDetails = new List<GIV_FG_ReleaseDetails>()
+                        };
+
+                        // Process entire pallets
+                        foreach (var pallet in receive.Pallets)
+                        {
+                            if (palletLookup.TryGetValue(pallet.PalletId, out var palletEntity))
+                            {
+                                var releaseDetail = new GIV_FG_ReleaseDetails
+                                {
+                                    Id = Guid.NewGuid(),
+                                    GIV_FG_ReceivePalletId = pallet.PalletId,
+                                    IsEntirePallet = true,
+                                    WarehouseId = palletEntity.WarehouseId,
+                                    CreatedAt = DateTime.UtcNow,
+                                    CreatedBy = userId
+                                };
+
+                                releaseRecord.GIV_FG_ReleaseDetails.Add(releaseDetail);
+                            }
+                        }
+
+                        // Process individual items
+                        foreach (var item in receive.Items)
+                        {
+                            if (itemLookup.TryGetValue(item.ItemId, out var itemEntity))
+                            {
+                                var releaseDetail = new GIV_FG_ReleaseDetails
+                                {
+                                    Id = Guid.NewGuid(),
+                                    GIV_FG_ReceivePalletId = itemEntity.GIV_FG_ReceivePallet.Id,
+                                    GIV_FG_ReceivePalletItemId = item.ItemId,
+                                    IsEntirePallet = false,
+                                    WarehouseId = itemEntity.GIV_FG_ReceivePallet.WarehouseId,
+                                    CreatedAt = DateTime.UtcNow,
+                                    CreatedBy = userId
+                                };
+
+                                releaseRecord.GIV_FG_ReleaseDetails.Add(releaseDetail);
+                            }
+                        }
+
+                        // Add the release record to the list
+                        if (releaseRecord.GIV_FG_ReleaseDetails.Any())
+                        {
+                            allReleases.Add(releaseRecord);
+                        }
+                    }
+                }
+
+                // Save all changes
+                _dbContext.GIV_FG_Releases.AddRange(allReleases);
+                await _dbContext.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                _logger.LogInformation("Finished good job release created successfully: {JobId}, {Count} release records created",
+                    jobId, allReleases.Count);
+
+                return new ServiceWebResult { Success = true };
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Error creating finished good job release");
+                return new ServiceWebResult { Success = false, ErrorMessage = ex.Message };
+            }
+        }
+
+        public async Task<FGServiceWebResult> ValidateJobReleaseConflictsAsync(WMS.Domain.DTOs.GIV_FinishedGood.Web.JobReleaseCreateDto dto)
+        {
+            _logger.LogInformation("Validating finished good job release conflicts for {FinishedGoodCount} finished goods", dto.FinishedGoods.Count);
+
+            try
+            {
+                var conflicts = new List<JobReleaseConflictDto>();
+
+                foreach (var finishedGood in dto.FinishedGoods)
+                {
+                    foreach (var receive in finishedGood.Receives)
+                    {
+                        // Validate entire pallets
+                        foreach (var pallet in receive.Pallets)
+                        {
+                            var palletConflicts = await ValidatePalletConflicts(
+                                finishedGood.FinishedGoodId,
+                                receive.ReceiveId,
+                                pallet.PalletId,
+                                true // isEntirePallet
+                            );
+
+                            conflicts.AddRange(palletConflicts);
+                        }
+
+                        // Validate individual items
+                        foreach (var item in receive.Items)
+                        {
+                            var itemConflicts = await ValidateItemConflicts(
+                                finishedGood.FinishedGoodId,
+                                receive.ReceiveId,
+                                item.ItemId
+                            );
+
+                            conflicts.AddRange(itemConflicts);
+                        }
+                    }
+                }
+
+                if (conflicts.Any())
+                {
+                    return new FGServiceWebResult
+                    {
+                        Success = false,
+                        ErrorMessage = $"Found {conflicts.Count} conflicts. Please resolve before proceeding.",
+                        ValidationDetails = conflicts
+                    };
+                }
+
+                return new FGServiceWebResult { Success = true };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error validating finished good job release conflicts");
+                return new FGServiceWebResult { Success = false, ErrorMessage = "Validation failed due to an error" };
+            }
+        }
+
+        private async Task<List<JobReleaseConflictDto>> ValidatePalletConflicts(
+            Guid finishedGoodId,
+            Guid receiveId,
+            Guid palletId,
+            bool isEntirePallet)
+        {
+            var conflicts = new List<JobReleaseConflictDto>();
+
+            // Check for existing entire pallet releases
+            var existingEntirePalletReleases = await _dbContext.GIV_FG_ReleaseDetails
+                .Include(rd => rd.GIV_FG_Release)
+                    .ThenInclude(r => r.GIV_FinishedGood)
+                .Include(rd => rd.GIV_FG_ReceivePallet)
+                .Where(rd => !rd.IsDeleted
+                    && rd.GIV_FG_Release.ActualReleaseDate == null  // Unreleased job
+                    && rd.ActualReleaseDate == null                  // Unreleased detail
+                    && rd.IsEntirePallet == true
+                    && rd.GIV_FG_ReceivePalletId == palletId)
+                .ToListAsync();
+
+            foreach (var existingRelease in existingEntirePalletReleases)
+            {
+                conflicts.Add(new JobReleaseConflictDto
+                {
+                    SKU = existingRelease.GIV_FG_Release.GIV_FinishedGood.SKU,
+                    ReceiveId = receiveId,
+                    PalletCode = existingRelease.GIV_FG_ReceivePallet?.PalletCode,
+                    ConflictType = "EntirePalletAlreadyScheduled",
+                    ExistingJobId = existingRelease.GIV_FG_Release.JobId,
+                    ConflictingItems = new List<string>()
+                });
+            }
+
+            // If requesting entire pallet, check for individual item conflicts
+            if (isEntirePallet)
+            {
+                var existingItemReleases = await _dbContext.GIV_FG_ReleaseDetails
+                    .Include(rd => rd.GIV_FG_Release)
+                        .ThenInclude(r => r.GIV_FinishedGood)
+                    .Include(rd => rd.GIV_FG_ReceivePallet)
+                    .Include(rd => rd.GIV_FG_ReceivePalletItem)
+                    .Where(rd => !rd.IsDeleted
+                        && rd.GIV_FG_Release.ActualReleaseDate == null
+                        && rd.ActualReleaseDate == null
+                        && rd.IsEntirePallet == false
+                        && rd.GIV_FG_ReceivePalletId == palletId)
+                    .ToListAsync();
+
+                if (existingItemReleases.Any())
+                {
+                    var conflictingItems = existingItemReleases
+                        .Select(r => r.GIV_FG_ReceivePalletItem?.ItemCode ?? "Unknown")
+                        .ToList();
+
+                    conflicts.Add(new JobReleaseConflictDto
+                    {
+                        SKU = existingItemReleases.First().GIV_FG_Release.GIV_FinishedGood.SKU,
+                        ReceiveId = receiveId,
+                        PalletCode = existingItemReleases.First().GIV_FG_ReceivePallet?.PalletCode,
+                        ConflictType = "IndividualItemsAlreadyScheduled",
+                        ExistingJobId = existingItemReleases.First().GIV_FG_Release.JobId,
+                        ConflictingItems = conflictingItems
+                    });
+                }
+            }
+
+            return conflicts;
+        }
+
+        private async Task<List<JobReleaseConflictDto>> ValidateItemConflicts(
+            Guid finishedGoodId,
+            Guid receiveId,
+            Guid itemId)
+        {
+            var conflicts = new List<JobReleaseConflictDto>();
+
+            // Get the item details
+            var item = await _dbContext.GIV_FG_ReceivePalletItems
+                .Include(i => i.GIV_FG_ReceivePallet)
+                .FirstOrDefaultAsync(i => i.Id == itemId && !i.IsDeleted);
+
+            if (item == null) return conflicts;
+
+            // Check if entire pallet is already scheduled
+            var entirePalletReleases = await _dbContext.GIV_FG_ReleaseDetails
+                .Include(rd => rd.GIV_FG_Release)
+                    .ThenInclude(r => r.GIV_FinishedGood)
+                .Include(rd => rd.GIV_FG_ReceivePallet)
+                .Where(rd => !rd.IsDeleted
+                    && rd.GIV_FG_Release.ActualReleaseDate == null
+                    && rd.ActualReleaseDate == null
+                    && rd.IsEntirePallet == true
+                    && rd.GIV_FG_ReceivePalletId == item.GIV_FG_ReceivePallet.Id)
+                .ToListAsync();
+
+            foreach (var entirePalletRelease in entirePalletReleases)
+            {
+                conflicts.Add(new JobReleaseConflictDto
+                {
+                    SKU = entirePalletRelease.GIV_FG_Release.GIV_FinishedGood.SKU,
+                    ReceiveId = receiveId,
+                    PalletCode = entirePalletRelease.GIV_FG_ReceivePallet?.PalletCode,
+                    ConflictType = "EntirePalletAlreadyScheduled",
+                    ExistingJobId = entirePalletRelease.GIV_FG_Release.JobId,
+                    ConflictingItems = new List<string> { item.ItemCode }
+                });
+            }
+
+            // Check if specific item is already scheduled
+            var individualItemReleases = await _dbContext.GIV_FG_ReleaseDetails
+                .Include(rd => rd.GIV_FG_Release)
+                    .ThenInclude(r => r.GIV_FinishedGood)
+                .Include(rd => rd.GIV_FG_ReceivePallet)
+                .Include(rd => rd.GIV_FG_ReceivePalletItem)
+                .Where(rd => !rd.IsDeleted
+                    && rd.GIV_FG_Release.ActualReleaseDate == null
+                    && rd.ActualReleaseDate == null
+                    && rd.IsEntirePallet == false
+                    && rd.GIV_FG_ReceivePalletItemId == itemId)
+                .ToListAsync();
+
+            foreach (var individualItemRelease in individualItemReleases)
+            {
+                conflicts.Add(new JobReleaseConflictDto
+                {
+                    SKU = individualItemRelease.GIV_FG_Release.GIV_FinishedGood.SKU,
+                    ReceiveId = receiveId,
+                    PalletCode = individualItemRelease.GIV_FG_ReceivePallet?.PalletCode,
+                    ConflictType = "IndividualItemAlreadyScheduled",
+                    ExistingJobId = individualItemRelease.GIV_FG_Release.JobId,
+                    ConflictingItems = new List<string> { item.ItemCode }
+                });
+            }
+
+            return conflicts;
+        }
+
+        #endregion
     }
 }

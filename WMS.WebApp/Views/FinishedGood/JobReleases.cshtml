@@ -3,6 +3,25 @@
 }
 @Html.AntiForgeryToken()
 
+<div class="card p-3 mb-4">
+    <div class="flex justify-between items-center">
+        <div>
+            <h4>Finished Good Job Releases</h4>
+            <p>Multi-SKU release jobs grouped by Job ID</p>
+        </div>
+        <div class="flex gap-2">
+            <a href="@Url.Action("CreateJobRelease")" class="btn btn-success">
+                <iconify-icon icon="lucide:plus-circle"></iconify-icon>
+                Create Job Release
+            </a>
+            <a href="@Url.Action("Datatable")" class="btn btn-secondary">
+                <iconify-icon icon="lucide:arrow-left"></iconify-icon>
+                Back to Finished Goods
+            </a>
+        </div>
+    </div>
+</div>
+
 <div class="card">
     <div class="card-header">
         <div class="flex justify-between items-center">

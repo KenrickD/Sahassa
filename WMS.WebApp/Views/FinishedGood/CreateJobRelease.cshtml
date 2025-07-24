@@ -1,0 +1,893 @@
+﻿@{
+    ViewData["Title"] = "Create Job Release";
+}
+@Html.AntiForgeryToken()
+
+<div class="card p-4">
+    <div class="flex justify-between items-center mb-4">
+        <h3>Create Job Release</h3>
+        <a href="@Url.Action("JobReleases")" class="btn btn-secondary">
+            <iconify-icon icon="lucide:arrow-left"></iconify-icon>
+            Back to Job Releases
+        </a>
+    </div>
+
+    <!-- Step Indicator -->
+    <div class="mb-6">
+        <div class="flex items-center justify-center">
+            <div class="step-indicator">
+                <div class="step step-active" data-step="1">
+                    <div class="step-circle">
+                        <span class="step-number">1</span>
+                        <iconify-icon icon="lucide:check" class="step-check hidden"></iconify-icon>
+                    </div>
+                    <span class="step-label">Select Finished Goods</span>
+                </div>
+                <div class="step-connector"></div>
+                <div class="step" data-step="2">
+                    <div class="step-circle">
+                        <span class="step-number">2</span>
+                        <iconify-icon icon="lucide:check" class="step-check hidden"></iconify-icon>
+                    </div>
+                    <span class="step-label">Configure Release</span>
+                </div>
+                <div class="step-connector"></div>
+                <div class="step" data-step="3">
+                    <div class="step-circle">
+                        <span class="step-number">3</span>
+                        <iconify-icon icon="lucide:check" class="step-check hidden"></iconify-icon>
+                    </div>
+                    <span class="step-label">Review & Submit</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 1: Finished Good Selection -->
+    <div id="step-1" class="step-content">
+        <div class="step-header mb-4">
+            <h4>Step 1: Select Finished Goods</h4>
+            <p class="text-muted">Choose the finished goods you want to include in this job release.</p>
+        </div>
+
+        <div class="mb-4">
+            <div class="flex justify-between items-center">
+                <div class="search-section">
+                    <input type="text" id="finishedgood-search" class="form-control" placeholder="Search finished goods..." style="width: 300px;">
+                </div>
+                <div class="selection-summary">
+                    <span class="badge bg-primary" id="selected-count">0 finished goods selected</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="finishedgood-selection-container">
+            <table id="finishedgoods-selection-table" class="table table-striped">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">
+                            <input type="checkbox" id="select-all-finishedgoods" class="form-check-input">
+                        </th>
+                        <th>SKU</th>
+                        <th>Description</th>
+                        <th>Balance Qty</th>
+                        <th>Balance Pallets</th>
+                    </tr>
+                </thead>
+                <tbody id="finishedgoods-table-body">
+                    <!-- Populated via JavaScript -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="step-footer mt-4">
+            <button id="next-to-step-2" class="btn btn-primary" disabled>
+                Next: Configure Release
+                <iconify-icon icon="lucide:arrow-right"></iconify-icon>
+            </button>
+        </div>
+    </div>
+
+    <!-- Step 2: Release Configuration -->
+    <div id="step-2" class="step-content" style="display: none;">
+        <div class="step-header mb-4">
+            <h4>Step 2: Configure Release Details</h4>
+            <p class="text-muted">Configure release settings for each selected finished good.</p>
+        </div>
+
+        <!-- Global Settings -->
+        <div class="card p-3 mb-4 bg-light">
+            <h5>Global Settings</h5>
+            <div class="row">
+                <div class="col-md-4">
+                    <label class="form-label">Default Release Date</label>
+                    <input type="date" id="global-release-date" class="form-control" min="@DateTime.Now.ToString("yyyy-MM-dd")">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Job Remarks</label>
+                    <input type="text" id="job-remarks" class="form-control" placeholder="Optional job-level remarks">
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="button" id="apply-global-settings" class="btn btn-outline-primary">
+                        Apply to All Finished Goods
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!--CONFLICT LEGEND -->
+        <div class="conflict-legend" id="conflict-legend" style="display: none;">
+            <div class="d-flex align-items-center mb-2">
+                <iconify-icon icon="lucide:info" class="me-2 text-warning"></iconify-icon>
+                <strong>Release Conflict Indicators</strong>
+            </div>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center mb-1">
+                        <div class="conflict-highlighted me-2" style="padding: 4px 8px; font-size: 10px;">Sample</div>
+                        <span>Already scheduled for release</span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center mb-1">
+                        <iconify-icon icon="lucide:mouse-pointer" class="me-2 text-info"></iconify-icon>
+                        <span>Hover for job details</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Selected Finished Goods Configuration -->
+        <div id="selected-finishedgoods-container">
+            <!-- Dynamic content populated by JavaScript -->
+        </div>
+
+        <div class="step-footer mt-4">
+            <button id="prev-to-step-1" class="btn btn-secondary">
+                <iconify-icon icon="lucide:arrow-left"></iconify-icon>
+                Previous
+            </button>
+            <button id="next-to-step-3" class="btn btn-primary" disabled>
+                Next: Review
+                <iconify-icon icon="lucide:arrow-right"></iconify-icon>
+            </button>
+        </div>
+    </div>
+
+    <!-- Step 3: Review & Submit -->
+    <div id="step-3" class="step-content" style="display: none;">
+        <div class="step-header mb-4">
+            <h4>Step 3: Review & Submit</h4>
+            <p class="text-muted">Review your job release configuration before submitting.</p>
+        </div>
+
+        <!-- Job Summary -->
+        <div class="card p-3 mb-4">
+            <h5>Job Summary</h5>
+            <div class="row">
+                <div class="col-md-3">
+                    <strong>Finished Goods:</strong>
+                    <div id="summary-finishedgood-count" class="text-primary fs-4">0</div>
+                </div>
+                <div class="col-md-3">
+                    <strong>Total Pallets:</strong>
+                    <div id="summary-pallet-count" class="text-success fs-4">0</div>
+                </div>
+                <div class="col-md-3">
+                    <strong>Total Items:</strong>
+                    <div id="summary-item-count" class="text-info fs-4">0</div>
+                </div>
+                <div class="col-md-3">
+                    <strong>Release Date:</strong>
+                    <div id="summary-release-date" class="text-warning fs-6">-</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Review -->
+        <div class="card">
+            <div class="card-header">
+                <h5>Release Details</h5>
+            </div>
+            <div class="card-body">
+                <div id="release-review-details">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <div class="step-footer mt-4">
+            <button id="prev-to-step-2" class="btn btn-secondary">
+                <iconify-icon icon="lucide:arrow-left"></iconify-icon>
+                Previous
+            </button>
+            <button id="submit-job-release" class="btn btn-success">
+                <iconify-icon icon="lucide:check"></iconify-icon>
+                Create Job Release
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* FORCE viewport constraint on everything */
+    html, body {
+        overflow-x: hidden !important;
+        max-width: 100vw !important;
+    }
+
+    /* FORCE the main containers to respect viewport */
+    .dashboard-main-body,
+    .card.p-4,
+    .step-content,
+    .finishedgood-config-card {
+        width: 100% !important;
+        max-width: calc(100vw - 40px) !important;
+        overflow-x: hidden !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Step Indicator Styles */
+    .step-indicator {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: relative;
+    }
+
+    .step-circle {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background-color: #e5e7eb;
+        border: 2px solid #d1d5db;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 8px;
+        transition: all 0.3s ease;
+    }
+
+    .step-active .step-circle {
+        background-color: #3b82f6;
+        border-color: #2563eb;
+        color: white;
+    }
+
+    .step-completed .step-circle {
+        background-color: #10b981;
+        border-color: #059669;
+        color: white;
+    }
+
+    .step-number {
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+
+    .step-check {
+        font-size: 1.25rem;
+    }
+
+    .step-completed .step-number {
+        display: none;
+    }
+
+    .step-completed .step-check {
+        display: block !important;
+    }
+
+    .step-label {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #6b7280;
+        text-align: center;
+    }
+
+    .step-active .step-label {
+        color: #1f2937;
+        font-weight: 600;
+    }
+
+    .step-connector {
+        width: 100px;
+        height: 2px;
+        background-color: #e5e7eb;
+        margin: 0 20px;
+        margin-top: 25px;
+    }
+
+    .step-active ~ .step-connector,
+    .step-completed ~ .step-connector {
+        background-color: #10b981;
+    }
+
+    /* Finished Good Selection Table */
+    .finishedgood-selection-container {
+        max-height: 400px;
+        overflow-y: auto;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+    }
+
+    .finishedgood-row {
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+
+        .finishedgood-row:hover {
+            background-color: #f9fafb;
+        }
+
+        .finishedgood-row.selected {
+            background-color: #eff6ff;
+            border-left: 4px solid #3b82f6;
+        }
+
+    /* Step Content */
+    .step-content {
+        min-height: 400px;
+    }
+
+    .step-header h4 {
+        color: #1f2937;
+        margin-bottom: 8px;
+    }
+
+    .step-header p {
+        color: #6b7280;
+    }
+
+    .step-footer {
+        display: flex;
+        justify-content: space-between;
+        padding-top: 20px;
+        border-top: 1px solid #e5e7eb;
+    }
+
+    /* Finished Good Configuration Cards */
+    .finishedgood-config-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        overflow: hidden;
+    }
+
+    .finishedgood-config-header {
+        background-color: #f8fafc;
+        padding: 16px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .finishedgood-config-content {
+        padding: 16px;
+        transition: opacity 0.3s ease;
+    }
+
+    /* IMPROVED PALLET LAYOUT STYLES */
+
+    /* HARD constraints on table */
+    .finishedgood-config-card .table {
+        table-layout: fixed !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+    }
+
+        /* FIXED column widths that add up to 100% */
+        .finishedgood-config-card .table th:nth-child(1),
+        .finishedgood-config-card .table td:nth-child(1) {
+            width: 80px !important;
+            min-width: 80px !important;
+            max-width: 80px !important;
+        }
+
+        .finishedgood-config-card .table th:nth-child(2),
+        .finishedgood-config-card .table td:nth-child(2) {
+            width: 140px !important;
+            min-width: 140px !important;
+            max-width: 140px !important;
+        }
+
+        .finishedgood-config-card .table th:nth-child(3),
+        .finishedgood-config-card .table td:nth-child(3) {
+            width: calc(100% - 220px) !important;
+            min-width: 300px !important;
+            max-width: calc(100% - 220px) !important;
+            overflow: hidden !important;
+            position: relative !important;
+        }
+
+    /* PALLETS: Use flexbox with wrapping - NO HORIZONTAL STRETCHING */
+    .pallets-container {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        align-content: flex-start !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 8px !important;
+        gap: 8px !important;
+        background-color: #f8fafc;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        max-height: 500px; /* Increased for better UX */
+        overflow-y: auto;
+        overflow-x: hidden !important;
+        box-sizing: border-box !important;
+    }
+
+        /* Each pallet card - FIXED WIDTH but DYNAMIC HEIGHT */
+        .pallets-container .card {
+            width: 220px !important; /* Slightly wider for better readability */
+            min-width: 220px !important;
+            max-width: 220px !important;
+            margin: 0 !important;
+            flex-shrink: 0 !important;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background: white;
+            overflow: visible !important; /* Allow expansion */
+            box-sizing: border-box !important;
+            /* Dynamic height based on content */
+            height: auto !important;
+            max-height: none !important;
+        }
+
+    /* Pallet header - single compact row */
+    .pallet-header-compact {
+        padding: 6px 8px;
+        background-color: #f9fafb;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex !important;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 28px;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .pallet-info-compact {
+        display: flex !important;
+        align-items: center;
+        gap: 4px;
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    .pallet-code-text {
+        font-weight: 600;
+        color: #1f2937;
+        font-size: 0.8rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100px;
+    }
+
+    .pallet-count-badge {
+        font-size: 0.7rem;
+        color: #6b7280;
+        background-color: #e5e7eb;
+        padding: 1px 4px;
+        border-radius: 8px;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    /* Items section - NO INTERNAL SCROLLBAR */
+    .pallet-items {
+        max-height: none !important; /* Remove height limit */
+        overflow: visible !important; /* No scrollbar on items */
+        padding: 6px 10px 8px 10px; /* Better padding */
+        background-color: #fefefe;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        border-top: 1px solid #f1f5f9;
+    }
+
+        /* When collapsed, hide items completely */
+        .pallet-items[style*="display: none"] {
+            display: none !important;
+        }
+
+        .pallet-items ul {
+            margin: 0 !important;
+            padding: 0 !important;
+            list-style: none !important;
+            /* Allow natural height expansion */
+            max-height: none !important;
+            overflow: visible !important;
+        }
+
+            .pallet-items ul li {
+                margin-bottom: 3px !important; /* More spacing */
+                padding: 2px 0 !important;
+            }
+
+        .pallet-items .form-check {
+            margin: 0 !important;
+            padding: 1px 0 !important; /* Small padding for better touch targets */
+        }
+
+        .pallet-items .form-check-label {
+            font-size: 0.75rem !important;
+            color: #4b5563;
+            line-height: 1.3; /* Better line height */
+            cursor: pointer;
+            padding: 2px 4px; /* Padding for better click area */
+            border-radius: 3px;
+            transition: background-color 0.15s ease;
+            display: block;
+            width: 100%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+            /* Hover effect for better UX */
+            .pallet-items .form-check-label:hover {
+                background-color: #f3f4f6;
+            }
+
+    /* Scrollbars - ONLY on main container */
+    .pallets-container::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .pallets-container::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 3px;
+    }
+
+    .pallets-container::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 3px;
+    }
+
+        .pallets-container::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+    /* Remove scrollbars from individual pallet items */
+    .pallet-items::-webkit-scrollbar {
+        display: none !important;
+    }
+
+    .dark .finishedgood-config-header {
+        background-color: #111827 !important;
+        border-bottom-color: #374151;
+    }
+
+        .dark .finishedgood-config-header h5 {
+            color: #f9fafb;
+        }
+
+        .dark .finishedgood-config-header small {
+            color: #9ca3af;
+        }
+
+    .dark .finishedgood-config-content {
+        background-color: #1f2937;
+    }
+    .pallet-items {
+        -ms-overflow-style: none !important; /* IE and Edge */
+        scrollbar-width: none !important; /* Firefox */
+    }
+
+    /* Toggle button improvements */
+    .toggle-all-items {
+        color: #3b82f6;
+        text-decoration: none;
+        font-size: 0.75rem;
+        padding: 2px 4px;
+        border-radius: 3px;
+        display: inline-block;
+        margin-bottom: 4px;
+        border: 1px solid #e5e7eb;
+        background-color: white;
+    }
+
+        .toggle-all-items:hover {
+            background-color: #eff6ff;
+            border-color: #3b82f6;
+            text-decoration: none;
+        }
+
+    /* Conflict highlighting styles */
+    .conflict-highlighted {
+        background-color: #fef3cd !important;
+        color: #856404 !important;
+        border: 1px solid #ffeaa7 !important;
+        border-radius: 4px;
+        padding: 2px 6px;
+        position: relative;
+    }
+
+    .pallet-conflict {
+        border: 2px solid #f39c12 !important;
+        background-color: #fef9e7 !important;
+        box-shadow: 0 0 8px rgba(243, 156, 18, 0.3);
+    }
+
+    .item-conflict {
+        background-color: #fef3cd !important;
+        border-radius: 4px;
+        padding: 2px 4px;
+        border-left: 3px solid #f39c12;
+    }
+
+    .dark .conflict-highlighted {
+        background-color: #8b4513 !important;
+        color: #ffd700 !important;
+        border-color: #daa520 !important;
+    }
+
+    .dark .pallet-conflict {
+        border-color: #daa520 !important;
+        background-color: #2d1810 !important;
+        box-shadow: 0 0 8px rgba(218, 165, 32, 0.3);
+    }
+
+    .dark .item-conflict {
+        background-color: #2d1810 !important;
+        border-left-color: #daa520;
+    }
+    /* Conflict legend */
+    .conflict-legend {
+        margin-top: 10px;
+        padding: 10px;
+        background-color: #f8f9fa;
+        border-radius: 6px;
+        border-left: 4px solid #f39c12;
+        font-size: 12px;
+    }
+
+    .dark .conflict-legend {
+        background-color: #1f2937;
+        color: #e5e7eb;
+    }
+    .conflict-highlighted input[type="checkbox"]:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    /* Animation for conflict indicators */
+    @@keyframes conflict-pulse {
+        0%
+
+    {
+        box-shadow: 0 0 0 0 rgba(243, 156, 18, 0.7);
+    }
+
+    70% {
+        box-shadow: 0 0 0 10px rgba(243, 156, 18, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(243, 156, 18, 0);
+    }
+
+    }
+
+    .pallet-conflict {
+        animation: conflict-pulse 2s infinite;
+    }
+    /* Review section styles */
+    .finishedgood-review-card .card {
+        border-left: 4px solid #3b82f6;
+    }
+
+    .receive-review {
+        padding: 8px;
+        background-color: #f8f9fa;
+        border-radius: 4px;
+        border-left: 3px solid #28a745;
+    }
+
+    .dark .receive-review {
+        background-color: #374151 !important;
+        color: #e5e7eb !important;
+        border-left-color: #28a745;
+    }
+    /* Debug: highlight any element that's too wide */
+    * {
+        max-width: 100% !important;
+    }
+
+    /* Dark mode support */
+    .dark .step-circle {
+        background-color: #374151;
+        border-color: #4b5563;
+    }
+
+    .dark .step-active .step-circle {
+        background-color: #3b82f6;
+        border-color: #2563eb;
+    }
+
+    .dark .step-completed .step-circle {
+        background-color: #10b981;
+        border-color: #059669;
+    }
+
+    .dark .finishedgood-selection-container {
+        background-color: #1f2937;
+        border-color: #374151;
+    }
+
+    .dark .finishedgood-row:hover {
+        background-color: #374151;
+    }
+
+    .dark .finishedgood-row.selected {
+        background-color: #1e40af;
+        border-left-color: #60a5fa;
+    }
+
+    .dark .pallets-container {
+        background-color: #111827;
+        border-color: #374151;
+    }
+
+    .dark .pallets-container .card {
+        background-color: #1f2937;
+        border-color: #4b5563;
+    }
+
+    .dark .pallet-header-compact {
+        background-color: #111827;
+        border-bottom-color: #374151;
+    }
+
+    .dark .pallet-items {
+        background-color: #1f2937;
+        border-top-color: #374151;
+    }
+
+    .dark .pallet-items .form-check-label {
+        color: #d1d5db;
+    }
+
+        .dark .pallet-items .form-check-label:hover {
+            background-color: #374151;
+        }
+
+    /* Dark mode for toggle buttons */
+    .dark .toggle-all-items {
+        color: #60a5fa;
+        background-color: #1f2937;
+        border-color: #374151;
+    }
+
+        .dark .toggle-all-items:hover {
+            background-color: #374151;
+            border-color: #60a5fa;
+        }
+
+    /* Dark mode for form elements inside finished good config */
+    .dark .finishedgood-config-card .form-control {
+        background-color: #374151;
+        border-color: #4b5563;
+        color: #e5e7eb;
+    }
+
+    .dark .finishedgood-config-card .form-select {
+        background-color: #374151;
+        border-color: #4b5563;
+        color: #e5e7eb;
+    }
+
+    /* Dark mode for checkboxes and labels */
+    .dark .finishedgood-config-card .form-check-label {
+        color: #d1d5db;
+    }
+
+    .dark .finishedgood-config-card .form-check-input:checked {
+        background-color: #3b82f6;
+        border-color: #2563eb;
+    }
+
+    /* Dark mode for scrollbars inside pallets container */
+    .dark .pallets-container::-webkit-scrollbar-track {
+        background: #111827;
+    }
+
+    .dark .pallets-container::-webkit-scrollbar-thumb {
+        background: #4b5563;
+    }
+
+        .dark .pallets-container::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
+
+    .dark .pallet-items::-webkit-scrollbar-track {
+        background: #1f2937;
+    }
+
+    .dark .pallet-items::-webkit-scrollbar-thumb {
+        background: #4b5563;
+    }
+
+        .dark .pallet-items::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
+
+    /* Dark mode for receive rows and table rows */
+    .dark .finishedgood-config-card tbody tr {
+        background-color: #1f2937 !important;
+    }
+
+        .dark .finishedgood-config-card tbody tr:hover {
+            background-color: #374151 !important;
+        }
+
+    /* Dark mode for small text and badges */
+    .dark .text-muted {
+        color: #9ca3af !important;
+    }
+
+    /* Dark mode for card subtitles in pallet items */
+    .dark .pallet-items .card-subtitle {
+        color: #9ca3af;
+    }
+
+    /* Additional specificity for nested elements */
+    .dark .finishedgood-config-card .pallets-container .card .pallet-items {
+        background-color: #1f2937 !important;
+    }
+
+    .dark .finishedgood-config-card .pallets-container .card .pallet-header-compact {
+        background-color: #111827 !important;
+    }
+
+    /* Mobile responsive */
+    @@media (max-width: 768px) {
+        .step-indicator {
+            flex-direction: column;
+        }
+
+        .step-connector {
+            width: 2px;
+            height: 50px;
+            margin: 10px 0;
+        }
+
+        .step {
+            margin-bottom: 10px;
+        }
+
+        .pallets-container .card {
+            width: 200px !important;
+            min-width: 200px !important;
+            max-width: 200px !important;
+        }
+
+        .finishedgood-config-card .table th:nth-child(3),
+        .finishedgood-config-card .table td:nth-child(3) {
+            min-width: 250px !important;
+        }
+    }
+
+    @@media (max-width: 480px) {
+        .pallets-container .card {
+            width: 180px !important;
+            min-width: 180px !important;
+            max-width: 180px !important;
+        }
+
+        .pallet-items .form-check-label {
+            font-size: 0.7rem !important;
+        }
+    }
+</style>
+
+@section Scripts {
+    <script src="~/js/pages/finished-good/create-job-release.js" asp-append-version="true"></script>
+}

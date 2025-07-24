@@ -1101,7 +1101,7 @@ namespace WMS.WebApp.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> GetBatchFinishedGoodReleaseConflicts([FromBody] List<Guid> finishedGoodIds)
+        public async Task<IActionResult> CheckBatchFinishedGoodReleaseConflicts([FromBody] List<Guid> finishedGoodIds)
         {
             try
             {
@@ -1134,7 +1134,145 @@ namespace WMS.WebApp.Controllers
                 });
             }
         }
+        [HttpGet]
+        public async Task<IActionResult> CreateJobRelease()
+        {
+            _logger.LogInformation("Accessing Create Job Release page for user {UserId}", _currentUserService.UserId);
 
+            // Check permissions
+            if (!_currentUserService.HasPermission("FinishedGood.Write"))
+            {
+                _logger.LogWarning("User {UserId} denied access to Create Job Release - insufficient permissions",
+                    _currentUserService.UserId);
+                return Forbid();
+            }
+
+            return View("CreateJobRelease");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SubmitJobRelease([FromBody] JobReleaseCreateDto dto)
+        {
+            try
+            {
+                _logger.LogInformation("Submitting job release for user {UserId} with {FinishedGoodCount} finished goods",
+                    _currentUserService.UserId, dto.FinishedGoods?.Count ?? 0);
+
+                // Check permissions
+                if (!_currentUserService.HasPermission("FinishedGood.Write"))
+                {
+                    _logger.LogWarning("User {UserId} denied access to submit job release - insufficient permissions",
+                        _currentUserService.UserId);
+                    return Forbid();
+                }
+
+                // Validate input
+                if (dto.FinishedGoods == null || !dto.FinishedGoods.Any())
+                {
+                    return BadRequest(new { success = false, message = "No finished goods provided for release" });
+                }
+
+                // Validate that each finished good has at least one receive with items
+                foreach (var finishedGood in dto.FinishedGoods)
+                {
+                    if (!finishedGood.Receives.Any())
+                    {
+                        return BadRequest(new
+                        {
+                            success = false,
+                            message = $"Finished Good {finishedGood.SKU} has no receives selected"
+                        });
+                    }
+
+                    foreach (var receive in finishedGood.Receives)
+                    {
+                        if (!receive.Pallets.Any() && !receive.Items.Any())
+                        {
+                            return BadRequest(new
+                            {
+                                success = false,
+                                message = $"Finished Good {finishedGood.SKU} has receives with no items selected"
+                            });
+                        }
+
+                        // Validate release date
+                        if (receive.ReleaseDate.Date < DateTime.UtcNow.Date)
+                        {
+                            return BadRequest(new
+                            {
+                                success = false,
+                                message = $"Release date cannot be in the past for finished good {finishedGood.SKU}"
+                            });
+                        }
+                    }
+                }
+
+                // Create the job release
+                var result = await _finishedGoodService.CreateJobReleaseAsync(dto, _currentUserService.UserId);
+
+                if (result.Success)
+                {
+                    _logger.LogInformation("Job release created successfully");
+
+                    return Json(new
+                    {
+                        success = true,
+                        message = "Job release created successfully"
+                    });
+                }
+                else
+                {
+                    _logger.LogWarning("Failed to create job release: {ErrorMessage}", result.ErrorMessage);
+                    return BadRequest(new
+                    {
+                        success = false,
+                        message = result.ErrorMessage ?? "Failed to create job release"
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error submitting job release");
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "An error occurred while creating the job release"
+                });
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ValidateJobReleaseConflicts([FromBody] JobReleaseCreateDto dto)
+        {
+            try
+            {
+                // Check permissions
+                if (!_currentUserService.HasPermission("FinishedGood.Read"))
+                {
+                    return Forbid();
+                }
+
+                var validationResult = await _finishedGoodService.ValidateJobReleaseConflictsAsync(dto);
+
+                return Json(new
+                {
+                    success = validationResult.Success,
+                    message = validationResult.ErrorMessage,
+                    conflicts = validationResult.ValidationDetails
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error validating job release conflicts");
+                return Json(new
+                {
+                    success = false,
+                    message = "Failed to validate job release conflicts"
+                });
+            }
+        }
         #endregion
     }
 }
