@@ -8,6 +8,7 @@ using WMS.Domain.DTOs.Common;
 using WMS.Domain.DTOs.GIV_Container;
 using WMS.Domain.Interfaces;
 using WMS.WebApp.Models.DataTables;
+using static WMS.Domain.Enumerations.Enumerations;
 
 namespace WMS.WebApp.Controllers
 {
@@ -25,8 +26,34 @@ namespace WMS.WebApp.Controllers
             _currentUserService = currentUserService;
             _toastService = toastService;
         }
-        public IActionResult DataTable()
+        // ADD these methods to your existing ContainerController class
+
+        [HttpGet]
+        [Route("Container/Import")]
+        public IActionResult Import()
         {
+            ViewBag.ContainerType = "import";
+            ViewBag.HasEditAccess = _currentUserService.HasPermission("Container.Write");
+            ViewBag.HasDeleteAccess = _currentUserService.HasPermission("Container.Delete");
+            ViewBag.HasViewAccess = _currentUserService.HasPermission("Container.Read");
+            return View("DataTable"); // Use the same view
+        }
+
+        [HttpGet]
+        [Route("Container/Export")]
+        public IActionResult Export()
+        {
+            ViewBag.ContainerType = "export";
+            ViewBag.HasEditAccess = _currentUserService.HasPermission("Container.Write");
+            ViewBag.HasDeleteAccess = _currentUserService.HasPermission("Container.Delete");
+            ViewBag.HasViewAccess = _currentUserService.HasPermission("Container.Read");
+            return View("DataTable"); // Use the same view
+        }
+
+        // MODIFY your existing DataTable method to support type parameter
+        public IActionResult DataTable(string type = "import")
+        {
+            ViewBag.ContainerType = type;
             ViewBag.HasEditAccess = _currentUserService.HasPermission("Container.Write");
             ViewBag.HasDeleteAccess = _currentUserService.HasPermission("Container.Delete");
             ViewBag.HasViewAccess = _currentUserService.HasPermission("Container.Read");
@@ -35,7 +62,7 @@ namespace WMS.WebApp.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> GetPaginatedContainers([FromForm] DataTablesRequest request)
+        public async Task<IActionResult> GetPaginatedContainers([FromForm] DataTablesRequest request, [FromForm] string containerType = "import")
         {
             try
             {
@@ -43,12 +70,18 @@ namespace WMS.WebApp.Controllers
                 int sortColumn = request.Order?.FirstOrDefault()?.Column ?? 0;
                 bool sortAscending = request.Order?.FirstOrDefault()?.Dir == "asc";
 
-                var result = await _containerService.GetPaginatedContainersAsync(
+                // Determine process type based on containerType parameter
+                var processType = containerType.ToLower() == "export" ? ContainerProcessType.Export : ContainerProcessType.Import;
+
+                _logger.LogInformation("Loading {ContainerType} containers with ProcessType={ProcessType}", containerType, processType);
+
+                var result = await _containerService.GetPaginatedContainersByTypeAsync(
                     request.Start,
                     request.Length,
                     searchTerm,
                     sortColumn,
-                    sortAscending
+                    sortAscending,
+                    processType
                 );
 
                 return Json(new
@@ -61,14 +94,14 @@ namespace WMS.WebApp.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to load paginated containers.");
+                _logger.LogError(ex, "Failed to load paginated {ContainerType} containers.", containerType);
                 return Json(new
                 {
                     draw = request.Draw,
                     recordsTotal = 0,
                     recordsFiltered = 0,
                     data = new List<object>(),
-                    error = "Failed to load container data"
+                    error = $"Failed to load {containerType} container data"
                 });
             }
         }

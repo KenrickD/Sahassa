@@ -304,28 +304,28 @@ namespace WMS.Application.Services
             {
                 fgPallet.Location!.IsEmpty = true;
                 fgPallet.LocationId = null;
-                fgPallet.IsReleased = true;
+                //fgPallet.IsReleased = true;
 
                 // Release all items in the FG pallet
-                foreach (var item in fgPallet.FG_ReceivePalletItems)
-                {
-                    item.IsReleased = true;
-                }
+                //foreach (var item in fgPallet.FG_ReceivePalletItems)
+                //{
+                //    item.IsReleased = true;
+                //}
 
                 _logger.LogInformation("Released Finished Goods pallet '{PalletCode}' from location '{LocationId}'", palletCode, dto.LocationId);
             }
             // 7. RM: only if all items are released
             else if (rmPallet != null)
             {
-                rmPallet.IsReleased = true;
+                //rmPallet.IsReleased = true;
                 rmPallet.Location!.IsEmpty = true;
                 rmPallet.LocationId = null;
 
                 // Release all items in the RM pallet
-                foreach (var item in rmPallet.RM_ReceivePalletItems)
-                {
-                    item.IsReleased = true;
-                }
+                //foreach (var item in rmPallet.RM_ReceivePalletItems)
+                //{
+                //    item.IsReleased = true;
+                //}
 
                 _logger.LogInformation("Released Raw Material pallet '{PalletCode}' from location '{LocationId}'", palletCode, dto.LocationId);
             }

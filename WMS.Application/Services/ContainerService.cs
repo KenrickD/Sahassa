@@ -344,6 +344,7 @@ namespace WMS.Application.Services
                 new JobTypeAndIdsDto{ JobType = GivaudanJobTye.IMPORT_CEVA, JobIds = [] },
                 new JobTypeAndIdsDto{ JobType = GivaudanJobTye.EXPORT_FCL, JobIds = [] },
                 new JobTypeAndIdsDto{ JobType = GivaudanJobTye.EXPORT_FCL_WL, JobIds = [] },
+                new JobTypeAndIdsDto{ JobType = GivaudanJobTye.EXPORT_FCL_RDC, JobIds = [] },
             };
 
             // Extract jobIds and assign JobId
@@ -505,6 +506,8 @@ namespace WMS.Application.Services
                 new JobTypeAndIdsDto{ JobType = GivaudanJobTye.IMPORT_CEVA, JobIds = [] },
                 new JobTypeAndIdsDto{ JobType = GivaudanJobTye.EXPORT_FCL, JobIds = [] },
                 new JobTypeAndIdsDto{ JobType = GivaudanJobTye.EXPORT_FCL_WL, JobIds = [] },
+                new JobTypeAndIdsDto{ JobType = GivaudanJobTye.EXPORT_FCL_RDC, JobIds = [] },
+
             };
 
             // Extract jobIds and assign JobId
@@ -516,27 +519,28 @@ namespace WMS.Application.Services
 
                 if (jobId != 0)
                 {
-                    if (jobType.Contains("NonHSC"))
-                    {
-                        requestDtos.FirstOrDefault(x => x.JobType == GivaudanJobTye.IMPORT_NONHSC)?.JobIds.Add(jobId);
-                        jobImportNonHSCIdSet.Add(jobId);
-                    }
-                    else if (jobType.Contains("CEVA"))
-                    {
-                        requestDtos.FirstOrDefault(x => x.JobType == GivaudanJobTye.IMPORT_CEVA)?.JobIds.Add(jobId);
-                        jobImportCEVAIdSet.Add(jobId);
-                    }
-                    else
-                    {
-                        requestDtos.FirstOrDefault(x => x.JobType == GivaudanJobTye.IMPORT)?.JobIds.Add(jobId);
-                        jobIdSet.Add(jobId);
-                    }
+                    requestDtos.FirstOrDefault(x => x.JobType == jobType)?.JobIds.Add(jobId);
                     container.JobType = jobType;
                 }
             }
 
-            var jobImports = await GetExternalContainerInfosByJobIdsAsync(requestDtos);
+            var jobs = await GetExternalContainerInfosByJobIdsAsync(requestDtos);
+            if (jobs != null && jobs.Any())
+            {
+                foreach (var container in containerViewDtos)
+                {
+                    var job = jobs.FirstOrDefault(x => x.JobId == container.JobId && x.JobType == container.JobType);
+                    if (job == null) continue;
 
+                    int containerSize = job.ContainerSize;
+
+                    container.ConcatePO = job.Marks;
+                    container.JobReference = job.YourRef;
+                    container.SealNo = container.SealNo ?? job.SealNumber;
+                    container.Size = container.Size != 0 ? container.Size : containerSize;
+                    container.SealNo = container.SealNo ?? job.SealNumber;
+                }
+            }
             _logger.LogInformation("Returning paginated result with {Count} containers for ProcessType {ProcessType}", containerViewDtos.Count, processType);
 
             return new PaginatedResult<ContainerViewDto>
@@ -561,9 +565,9 @@ namespace WMS.Application.Services
                 if (!Guid.TryParse(_currentUserService.UserId, out var userId))
                 {
                     return ApiResponseDto<string>.ErrorResult(
-            "Invalid user ID format.",
-            new List<string> { "User ID could not be parsed to GUID." }
-        );
+                        "Invalid user ID format.",
+                        new List<string> { "User ID could not be parsed to GUID." }
+                    );
                 }
 
                 var user = await _dbContext.Users
@@ -1042,18 +1046,8 @@ namespace WMS.Application.Services
                 client.DefaultRequestHeaders.Authorization =
                     new AuthenticationHeaderValue("Bearer", token);
 
-                var url = $"{baseUrl}/JobImport/GetVesselContainerInfoById/{jobId}";
-                if (jobType.Contains("NonHSC"))
-                {
-                    url = url.Replace(GivaudanJobTye.IMPORT, GivaudanJobTye.IMPORT_NONHSC);
-                }
-                else
-                {
-                    if (jobType.Contains("CEVA"))
-                    {
-                        url = url.Replace(GivaudanJobTye.IMPORT, GivaudanJobTye.IMPORT_CEVA);
-                    }
-                }
+                var url = $"{baseUrl}/{jobType}/GetVesselContainerInfoById/{jobId}";
+
                 _logger.LogInformation("Calling external GET {Url}", url);
 
                 var sw = Stopwatch.StartNew();
@@ -1226,18 +1220,7 @@ namespace WMS.Application.Services
                 var client = _httpClientFactory.CreateClient();
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-                var requestUrl = $"{baseUrl}/JobImport/GetJobImportAttachmentsById/{jobId}";
-                if (jobType != GivaudanJobTye.IMPORT)
-                {
-                    if (jobType.Contains("NonHSC"))
-                    {
-                        requestUrl = requestUrl.Replace(GivaudanJobTye.IMPORT, GivaudanJobTye.IMPORT_NONHSC);
-                    }
-                    if (jobType.Contains("CEVA"))
-                    {
-                        requestUrl = requestUrl.Replace(GivaudanJobTye.IMPORT, GivaudanJobTye.IMPORT_CEVA);
-                    }
-                }
+                var requestUrl = $"{baseUrl}/{jobType}/Get{jobType}AttachmentsById/{jobId}";
            
                 _logger.LogInformation("Target URL: {RequestUrl}", requestUrl);
 

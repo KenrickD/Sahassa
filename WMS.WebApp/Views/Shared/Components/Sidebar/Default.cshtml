@@ -84,9 +84,15 @@
                         @if (hasContainerAccess)
                         {
                             <li>
-                                <a asp-action="Datatable" asp-controller="Container" class="flex items-center gap-2">
+                                <a asp-action="Import" asp-controller="Container" class="flex items-center gap-2">
                                     <iconify-icon icon="mdi:package-variant-closed" class="menu-icon"></iconify-icon>
-                                    <span>Container</span>
+                                    <span>Import Containers</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a asp-action="Export" asp-controller="Container" class="flex items-center gap-2">
+                                    <iconify-icon icon="mdi:package-variant-closed" class="menu-icon"></iconify-icon>
+                                    <span>Export Containers</span>
                                 </a>
                             </li>
                         }

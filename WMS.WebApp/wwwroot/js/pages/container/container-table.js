@@ -30,6 +30,40 @@
     let currentAttachmentContainerId = null;
     let currentAttachments = [];
 
+    const CONTAINER_CONFIG = {
+        import: {
+            columns: [
+                { key: 'containerNo_GW', title: 'Container No', visible: true },
+                { key: 'concatePO', title: 'POs', visible: true },
+                { key: 'plannedDelivery_GW', title: 'Planned Delivery', visible: true },
+                { key: 'remarks', title: 'Remarks', visible: true },
+                { key: 'unstuffedBy', title: 'Unstuffed By', visible: true },
+                { key: 'unstuffedDate', title: 'Unstuffed Date', visible: true },
+                { key: 'containerURL', title: 'URL', visible: true },
+                { key: 'isLoose', title: 'IsLoose', visible: true },
+                { key: 'isSamplingArrAtWarehouse', title: 'IsSampling', visible: true },
+                { key: 'photos', title: 'Photos', visible: true },
+                { key: 'addPhoto', title: 'Add Photo', visible: true },
+                { key: 'attachments', title: 'ATCH', visible: true },
+                { key: 'report', title: 'Report', visible: true }
+            ]
+        },
+        export: {
+            columns: [
+                { key: 'jobReference', title: 'Job Reference', visible: true },
+                { key: 'containerNo_GW', title: 'Container No', visible: true },
+                { key: 'sealNo', title: 'Seal', visible: true },
+                { key: 'size', title: 'Size', visible: true },
+                { key: 'remarks', title: 'Remarks', visible: true },
+                { key: 'stuffedDate', title: 'Stuffing Date', visible: true },
+                { key: 'stuffedBy', title: 'Stuffing By', visible: true },
+                { key: 'containerURL', title: 'URL', visible: true },
+                { key: 'photos', title: 'Photos', visible: true },
+                { key: 'addPhoto', title: 'Add Photo', visible: true },
+                { key: 'report', title: 'Report', visible: true }
+            ]
+        }
+    };
     // Initialize module
     function init() {
         document.addEventListener('DOMContentLoaded', function () {
@@ -43,10 +77,15 @@
     // Table initialization function
     function initializeContainerDataTable() {
         const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+        const containerType = window.containerType || 'import';
+        const config = CONTAINER_CONFIG[containerType];
 
         const canEdit = window.hasEditAccess === true || window.hasEditAccess === 'true';
         const canDelete = window.hasDeleteAccess === true || window.hasDeleteAccess === 'true';
         const canView = window.hasViewAccess === true || window.hasViewAccess === 'true';
+
+        // Build table headers dynamically
+        buildTableHeaders(config.columns);
 
         ContainerTable = $('#container-table').DataTable({
             processing: true,
@@ -60,241 +99,361 @@
                 },
                 data: function (d) {
                     d.__RequestVerificationToken = token;
+                    d.containerType = containerType; // Send container type to server
                     return d;
                 },
                 error: function (xhr, error) {
                     console.error('Failed to load containers:', error);
                 }
             },
-            columns: [
-                {
-                    data: 'containerNo_GW',
-                    render: function (data) {
-                        return data ? `<span class="text-sm font-medium text-gray-900 dark:text-white">${escapeHtml(data)}</span>` : '<span class="text-gray-400">-</span>';
-                    }
-                },
-                //{
-                //    data: 'concatePO',
-                //    render: function (data) {
-                //        return data ? `<span class="text-sm font-medium text-gray-900 dark:text-white">${escapeHtml(data)}</span>` : '<span class="text-gray-400">-</span>';
-                //    }
-                //},
-                {
-                    data: 'concatePO',
-                    render: function (data, type, row) {
-                        if (!data) {
-                            return '<span class="text-gray-400">-</span>';
-                        }
-
-                        // For export/print/search, return full data
-                        if (type === 'export' || type === 'print' || type === 'type') {
-                            return data;
-                        }
-
-                        const fullText = escapeHtml(data);
-                        const maxLength = 11;
-
-                        // If text is within limit, show as-is
-                        if (fullText.length <= maxLength) {
-                            return `<span class="text-sm font-medium text-gray-900 dark:text-white">${fullText}</span>`;
-                        }
-
-                        // Truncate and add tooltip
-                        const truncatedText = fullText.substring(0, maxLength);
-
-                        return `<span class="text-sm font-medium text-gray-900 dark:text-white truncate-with-tooltip cursor-help" 
-                                      title="${fullText}"
-                                      data-full-text="${fullText}">
-                                    ${truncatedText}...
-                                </span>`;
-                    }
-                },
-                {
-                    data: 'plannedDelivery_GW',
-                    render: function (data) {
-                        if (!data) return '<span class="text-gray-400">-</span>';
-                        const formatted = new Date(data).toISOString().split('T')[0];
-                        return `<span class="text-sm text-gray-600 dark:text-gray-400">${formatted}</span>`;
-                    }
-                },
-                {
-                    data: 'remarks',
-                    render: function (data, type, row) {
-                        if (!canEdit) {
-                            return data ? `<span class="text-sm text-gray-600 dark:text-gray-400">${escapeHtml(data)}</span>` : '<span class="text-gray-400">-</span>';
-                        }
-                        return `<input type="text" class="form-control form-control-sm inline-edit w-full px-3 py-1.5 text-sm border border-neutral-200 dark:border-neutral-600 rounded-lg text-gray-900 dark:text-white"
-                                       data-id="${row.containerId}" data-field="Remarks" value="${escapeHtml(data || '')}" />`;
-                    }
-                },
-                {
-                    data: 'unstuffedBy',
-                    render: function (data, type, row) {
-                        if (!canEdit) {
-                            return data ? `<span class="text-sm text-gray-600 dark:text-gray-400">${escapeHtml(data)}</span>` : '<span class="text-gray-400">-</span>';
-                        }
-                        return `<input type="text" class="form-control form-control-sm inline-edit w-full px-3 py-1.5 text-sm border border-neutral-200 dark:border-neutral-600 rounded-lg text-gray-900 dark:text-white"
-                                       data-id="${row.containerId}" data-field="UnstuffedBy" value="${escapeHtml(data || '')}" />`;
-                    }
-                },
-                {
-                    data: 'unstuffedDate',
-                    render: function (data, type, row) {
-                        if (!canEdit) {
-                            if (!data) return '<span class="text-gray-400">-</span>';
-                            const formatted = new Date(data).toISOString().split('T')[0];
-                            return `<span class="text-sm text-gray-600 dark:text-gray-400">${formatted}</span>`;
-                        }
-                        const val = data ? new Date(data).toISOString().split('T')[0] : '';
-                        return `<input type="date" class="form-control form-control-sm inline-edit w-full px-3 py-1.5 text-sm border border-neutral-200 dark:border-neutral-600 rounded-lg text-gray-900 dark:text-white"
-                                       data-id="${row.containerId}" data-field="UnstuffedDate" value="${val}" />`;
-                    }
-                },
-                {
-                    data: 'containerURL',
-                    render: function (data) {
-                        if (!data) return '<span class="text-gray-400">No URL</span>';
-                        return `<a href="${escapeHtml(data)}" target="_blank" 
-                                   class="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-900/30">
-                                    <iconify-icon icon="mdi:external-link" class="text-base"></iconify-icon>
-                                    View
-                                </a>`;
-                    }
-                },
-                {
-                    data: 'isLoose',
-                    width: '5%',
-                    render: function (data, type, row, meta) {
-                        const isChecked = data === true ? 'checked' : '';
-                        return `<div class="form-check style-check flex items-center">
-                                    <input class="form-check-input product-select disabled" disabled type="checkbox" value="${data}" ${isChecked}>
-                                </div>`;
-                    },
-                },
-                {
-                    data: 'isSamplingArrAtWarehouse',
-                    width: '5%',
-                    render: function (data, type, row, meta) {
-                        const isChecked = data === true ? 'checked' : '';
-                        return `<div class="form-check style-check flex items-center">
-                                    <input class="form-check-input product-select disabled" disabled type="checkbox" value="${data}" ${isChecked}>
-                                </div>`;
-                    },
-                },
-                {
-                    data: 'containerPhotos',
-                    orderable: false,
-                    searchable: false,
-                    render: function (photos, type, row) {
-                        if (!photos || !photos.length) {
-                            return '<span class="text-gray-400 text-sm">No Photos</span>';
-                        }
-
-                        const photoCount = photos.length;
-                        return `<button class="view-photos-btn inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30" 
-                                       data-id="${row.containerId}" data-photos='${JSON.stringify(photos)}' title="View Photos">
-                                    <iconify-icon icon="mdi:image-multiple" class="text-base"></iconify-icon>
-                                    ${photoCount} Photo${photoCount > 1 ? 's' : ''}
-                                </button>`;
-                    }
-                },
-                {
-                    data: null,
-                    orderable: false,
-                    searchable: false,
-                    render: function (data, type, row) {
-                        if (!canEdit) return '<span class="text-gray-400">-</span>';
-                        return `<button class="upload-photo-btn inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30" 
-                                       data-id="${row.containerId}" title="Upload Photos">
-                                    <iconify-icon icon="mdi:cloud-upload" class="text-base"></iconify-icon>
-                                    Upload
-                                </button>`;
-                    }
-                },
-                {
-                    data: null,
-                    orderable: false,
-                    searchable: false,
-                    render: function (data, type, row) {
-                        if (!row.jobId && row.jobId == 0) return '<span class="text-gray-400">-</span>';
-                        let actionsHtml = '<div class="flex items-center gap-2">';
-
-                        // View Attachments Button (always show for containers with JobId)
-                        actionsHtml += `
-                            <button class="view-attachments-btn inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/30" 
-                                    data-id="${row.containerId}" 
-                                    data-job-id="${row.jobId}"
-                                    title="View Attachments">
-                                <iconify-icon icon="mdi:paperclip" class="text-base"></iconify-icon>
-                                Attachments
-                            </button>`;
-                        actionsHtml += '</div>';
-
-                        return actionsHtml;
-                    }
-                },
-                {
-                    data: null,
-                    orderable: false,
-                    searchable: false,
-                    render: function (data, type, row) {
-                        if (!canView) return '<span class="text-gray-400">-</span>';
-
-                        let actionsHtml = '<div class="flex items-center gap-2">';
-
-                        if (row.unstuffedDate) {
-                            actionsHtml += `
-                                <button class="generate-report-btn w-8 h-8 bg-success-100 dark:bg-success-600/25 text-success-600 dark:text-success-400 rounded-full inline-flex items-center justify-center hover:bg-success-200 dark:hover:bg-success-600/35" 
-                                        data-id="${row.containerId}" title="Generate Report">
-                                    <iconify-icon icon="mdi:file-excel-outline" class="text-base"></iconify-icon>
-                                </button>
-                                <button class="link-receive-btn inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30"
-                                       data-id="${row.containerId}" 
-                                       data-container-no="${row.containerNo_GW}"
-                                       title="Receive Pallets">
-                                    <iconify-icon icon="mdi:link-variant" class="text-base"></iconify-icon>
-                                    Receive Pallets
-                                </button>`;
-                        } else {
-                            actionsHtml += `
-                                <button class="link-receive-btn inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30"
-                                       data-id="${row.containerId}" 
-                                       data-container-no="${row.containerNo_GW}"
-                                       title="Receive Pallets">
-                                    <iconify-icon icon="mdi:link-variant" class="text-base"></iconify-icon>
-                                    Receive Pallets
-                                </button>`;
-                        }
-
-                        actionsHtml += '</div>';
-                        return actionsHtml;
-                    }
-                }
-            ],
+            columns: buildDynamicColumns(config.columns, canEdit, canDelete, canView),
             columnDefs: [
-                { targets: [6, 7, 8, 9, 10], sortable: false }
+                { targets: '_all', sortable: true }
             ],
-            order: [[5, 'desc']],
+            order: containerType === 'export' ? [[5, 'desc']] : [[5, 'desc']], // Sort by date column
             dom: '<"flex justify-between items-center mb-4"<"flex"f><"flex-1 text-right"l>>rt<"flex justify-between items-center mt-4"<"flex-1"i><"flex"p>>',
             language: {
                 search: "",
-                searchPlaceholder: "Search containers...",
+                searchPlaceholder: `Search ${containerType} containers...`,
                 lengthMenu: "_MENU_ per page",
-                info: "Showing _START_ to _END_ of _TOTAL_ containers",
+                info: `Showing _START_ to _END_ of _TOTAL_ ${containerType} containers`,
                 paginate: {
                     first: '<iconify-icon icon="heroicons-outline:chevron-double-left"></iconify-icon>',
                     last: '<iconify-icon icon="heroicons-outline:chevron-double-right"></iconify-icon>',
                     next: '<iconify-icon icon="heroicons-outline:chevron-right"></iconify-icon>',
                     previous: '<iconify-icon icon="heroicons-outline:chevron-left"></iconify-icon>'
                 },
-                zeroRecords: "No matching containers found",
-                emptyTable: "No container data available"
+                zeroRecords: `No matching ${containerType} containers found`,
+                emptyTable: `No ${containerType} container data available`
             },
             drawCallback: function () {
                 setupRowEventHandlers();
                 applyDarkModeToTable();
             }
         });
+    }
+
+    // ADD these new helper functions:
+    function buildTableHeaders(columns) {
+        const headerRow = $('#table-header');
+        headerRow.empty();
+
+        columns.forEach(col => {
+            if (col.visible) {
+                let headerClass = 'text-neutral-800 dark:text-white';
+                let headerContent = `<div class="flex items-center gap-2">${col.title}</div>`;
+
+                // Special handling for checkbox columns
+                if (col.key === 'isLoose' || col.key === 'isSamplingArrAtWarehouse') {
+                    headerContent = `<div class="form-check style-check flex items-center">
+                    <label class="ms-2 form-check-label">${col.title}</label>
+                </div>`;
+                }
+
+                headerRow.append(`<th scope="col" class="${headerClass}">${headerContent}</th>`);
+            }
+        });
+    }
+
+    function buildDynamicColumns(columns, canEdit, canDelete, canView) {
+        const dynamicColumns = [];
+
+        columns.forEach(col => {
+            if (col.visible) {
+                switch (col.key) {
+                    case 'jobReference':
+                        dynamicColumns.push({
+                            data: 'jobReference',
+                            render: function (data) {
+                                return data ? `<span class="text-sm font-medium text-gray-900 dark:text-white">${escapeHtml(data)}</span>` : '<span class="text-gray-400">-</span>';
+                            }
+                        });
+                        break;
+
+                    case 'containerNo_GW':
+                        dynamicColumns.push({
+                            data: 'containerNo_GW',
+                            render: function (data) {
+                                return data ? `<span class="text-sm font-medium text-gray-900 dark:text-white">${escapeHtml(data)}</span>` : '<span class="text-gray-400">-</span>';
+                            }
+                        });
+                        break;
+
+                    case 'sealNo':
+                        dynamicColumns.push({
+                            data: 'sealNo',
+                            render: function (data, type, row) {
+                                if (!canEdit) {
+                                    return data ? `<span class="text-sm text-gray-600 dark:text-gray-400">${escapeHtml(data)}</span>` : '<span class="text-gray-400">-</span>';
+                                }
+                                return `<input type="text" class="form-control form-control-sm inline-edit w-full px-3 py-1.5 text-sm border border-neutral-200 dark:border-neutral-600 rounded-lg text-gray-900 dark:text-white"
+                                           data-id="${row.containerId}" data-field="SealNo" value="${escapeHtml(data || '')}" />`;
+                            }
+                        });
+                        break;
+
+                    case 'size':
+                        dynamicColumns.push({
+                            data: 'size',
+                            render: function (data, type, row) {
+                                if (!canEdit) {
+                                    return data ? `<span class="text-sm text-gray-600 dark:text-gray-400">${data}</span>` : '<span class="text-gray-400">-</span>';
+                                }
+                                return `<input type="number" class="form-control form-control-sm inline-edit w-full px-3 py-1.5 text-sm border border-neutral-200 dark:border-neutral-600 rounded-lg text-gray-900 dark:text-white"
+                                           data-id="${row.containerId}" data-field="Size" value="${data || ''}" />`;
+                            }
+                        });
+                        break;
+
+                    case 'stuffedDate':
+                        dynamicColumns.push({
+                            data: 'stuffedDate',
+                            render: function (data, type, row) {
+                                if (!canEdit) {
+                                    if (!data) return '<span class="text-gray-400">-</span>';
+                                    const formatted = new Date(data).toISOString().split('T')[0];
+                                    return `<span class="text-sm text-gray-600 dark:text-gray-400">${formatted}</span>`;
+                                }
+                                const val = data ? new Date(data).toISOString().split('T')[0] : '';
+                                return `<input type="date" class="form-control form-control-sm inline-edit w-full px-3 py-1.5 text-sm border border-neutral-200 dark:border-neutral-600 rounded-lg text-gray-900 dark:text-white"
+                                           data-id="${row.containerId}" data-field="StuffedDate" value="${val}" />`;
+                            }
+                        });
+                        break;
+
+                    case 'stuffedBy':
+                        dynamicColumns.push({
+                            data: 'stuffedBy',
+                            render: function (data, type, row) {
+                                if (!canEdit) {
+                                    return data ? `<span class="text-sm text-gray-600 dark:text-gray-400">${escapeHtml(data)}</span>` : '<span class="text-gray-400">-</span>';
+                                }
+                                return `<input type="text" class="form-control form-control-sm inline-edit w-full px-3 py-1.5 text-sm border border-neutral-200 dark:border-neutral-600 rounded-lg text-gray-900 dark:text-white"
+                                           data-id="${row.containerId}" data-field="StuffedBy" value="${escapeHtml(data || '')}" />`;
+                            }
+                        });
+                        break;
+
+                    case 'concatePO':
+                        dynamicColumns.push({
+                            data: 'concatePO',
+                            render: function (data, type, row) {
+                                if (!data) {
+                                    return '<span class="text-gray-400">-</span>';
+                                }
+                                if (type === 'export' || type === 'print' || type === 'type') {
+                                    return data;
+                                }
+                                const fullText = escapeHtml(data);
+                                const maxLength = 11;
+                                if (fullText.length <= maxLength) {
+                                    return `<span class="text-sm font-medium text-gray-900 dark:text-white">${fullText}</span>`;
+                                }
+                                const truncatedText = fullText.substring(0, maxLength);
+                                return `<span class="text-sm font-medium text-gray-900 dark:text-white truncate-with-tooltip cursor-help" 
+                                          title="${fullText}"
+                                          data-full-text="${fullText}">
+                                        ${truncatedText}...
+                                    </span>`;
+                            }
+                        });
+                        break;
+
+                    case 'plannedDelivery_GW':
+                        dynamicColumns.push({
+                            data: 'plannedDelivery_GW',
+                            render: function (data) {
+                                if (!data) return '<span class="text-gray-400">-</span>';
+                                const formatted = new Date(data).toISOString().split('T')[0];
+                                return `<span class="text-sm text-gray-600 dark:text-gray-400">${formatted}</span>`;
+                            }
+                        });
+                        break;
+
+                    case 'remarks':
+                        dynamicColumns.push({
+                            data: 'remarks',
+                            render: function (data, type, row) {
+                                if (!canEdit) {
+                                    return data ? `<span class="text-sm text-gray-600 dark:text-gray-400">${escapeHtml(data)}</span>` : '<span class="text-gray-400">-</span>';
+                                }
+                                return `<input type="text" class="form-control form-control-sm inline-edit w-full px-3 py-1.5 text-sm border border-neutral-200 dark:border-neutral-600 rounded-lg text-gray-900 dark:text-white"
+                                           data-id="${row.containerId}" data-field="Remarks" value="${escapeHtml(data || '')}" />`;
+                            }
+                        });
+                        break;
+
+                    case 'unstuffedBy':
+                        dynamicColumns.push({
+                            data: 'unstuffedBy',
+                            render: function (data, type, row) {
+                                if (!canEdit) {
+                                    return data ? `<span class="text-sm text-gray-600 dark:text-gray-400">${escapeHtml(data)}</span>` : '<span class="text-gray-400">-</span>';
+                                }
+                                return `<input type="text" class="form-control form-control-sm inline-edit w-full px-3 py-1.5 text-sm border border-neutral-200 dark:border-neutral-600 rounded-lg text-gray-900 dark:text-white"
+                                           data-id="${row.containerId}" data-field="UnstuffedBy" value="${escapeHtml(data || '')}" />`;
+                            }
+                        });
+                        break;
+
+                    case 'unstuffedDate':
+                        dynamicColumns.push({
+                            data: 'unstuffedDate',
+                            render: function (data, type, row) {
+                                if (!canEdit) {
+                                    if (!data) return '<span class="text-gray-400">-</span>';
+                                    const formatted = new Date(data).toISOString().split('T')[0];
+                                    return `<span class="text-sm text-gray-600 dark:text-gray-400">${formatted}</span>`;
+                                }
+                                const val = data ? new Date(data).toISOString().split('T')[0] : '';
+                                return `<input type="date" class="form-control form-control-sm inline-edit w-full px-3 py-1.5 text-sm border border-neutral-200 dark:border-neutral-600 rounded-lg text-gray-900 dark:text-white"
+                                           data-id="${row.containerId}" data-field="UnstuffedDate" value="${val}" />`;
+                            }
+                        });
+                        break;
+
+                    case 'containerURL':
+                        dynamicColumns.push({
+                            data: 'containerURL',
+                            render: function (data) {
+                                if (!data) return '<span class="text-gray-400">No URL</span>';
+                                return `<a href="${escapeHtml(data)}" target="_blank" 
+                                       class="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-900/30">
+                                        <iconify-icon icon="mdi:external-link" class="text-base"></iconify-icon>
+                                        View
+                                    </a>`;
+                            }
+                        });
+                        break;
+
+                    case 'isLoose':
+                        dynamicColumns.push({
+                            data: 'isLoose',
+                            width: '5%',
+                            render: function (data) {
+                                const isChecked = data === true ? 'checked' : '';
+                                return `<div class="form-check style-check flex items-center">
+                                        <input class="form-check-input product-select disabled" disabled type="checkbox" value="${data}" ${isChecked}>
+                                    </div>`;
+                            }
+                        });
+                        break;
+
+                    case 'isSamplingArrAtWarehouse':
+                        dynamicColumns.push({
+                            data: 'isSamplingArrAtWarehouse',
+                            width: '5%',
+                            render: function (data) {
+                                const isChecked = data === true ? 'checked' : '';
+                                return `<div class="form-check style-check flex items-center">
+                                        <input class="form-check-input product-select disabled" disabled type="checkbox" value="${data}" ${isChecked}>
+                                    </div>`;
+                            }
+                        });
+                        break;
+
+                    case 'photos':
+                        dynamicColumns.push({
+                            data: 'containerPhotos',
+                            orderable: false,
+                            searchable: false,
+                            render: function (photos, type, row) {
+                                if (!photos || !photos.length) {
+                                    return '<span class="text-gray-400 text-sm">No Photos</span>';
+                                }
+                                const photoCount = photos.length;
+                                return `<button class="view-photos-btn inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30" 
+                                           data-id="${row.containerId}" data-photos='${JSON.stringify(photos)}' title="View Photos">
+                                        <iconify-icon icon="mdi:image-multiple" class="text-base"></iconify-icon>
+                                        ${photoCount} Photo${photoCount > 1 ? 's' : ''}
+                                    </button>`;
+                            }
+                        });
+                        break;
+
+                    case 'addPhoto':
+                        dynamicColumns.push({
+                            data: null,
+                            orderable: false,
+                            searchable: false,
+                            render: function (data, type, row) {
+                                if (!canEdit) return '<span class="text-gray-400">-</span>';
+                                return `<button class="upload-photo-btn inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30" 
+                                           data-id="${row.containerId}" title="Upload Photos">
+                                        <iconify-icon icon="mdi:cloud-upload" class="text-base"></iconify-icon>
+                                        Upload
+                                    </button>`;
+                            }
+                        });
+                        break;
+
+                    case 'attachments':
+                        dynamicColumns.push({
+                            data: null,
+                            orderable: false,
+                            searchable: false,
+                            render: function (data, type, row) {
+                                if (!row.jobId && row.jobId == 0) return '<span class="text-gray-400">-</span>';
+                                return `<button class="view-attachments-btn inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/30" 
+                                            data-id="${row.containerId}" 
+                                            data-job-id="${row.jobId}"
+                                            title="View Attachments">
+                                        <iconify-icon icon="mdi:paperclip" class="text-base"></iconify-icon>
+                                        Attachments
+                                    </button>`;
+                            }
+                        });
+                        break;
+
+                    case 'report':
+                        dynamicColumns.push({
+                            data: null,
+                            orderable: false,
+                            searchable: false,
+                            render: function (data, type, row) {
+                                if (!canView) return '<span class="text-gray-400">-</span>';
+
+                                const containerType = window.containerType || 'import';
+                                const dateField = containerType === 'export' ? 'stuffedDate' : 'unstuffedDate';
+
+                                let actionsHtml = '<div class="flex items-center gap-2">';
+
+                                if (row[dateField]) {
+                                    actionsHtml += `
+                                    <button class="generate-report-btn w-8 h-8 bg-success-100 dark:bg-success-600/25 text-success-600 dark:text-success-400 rounded-full inline-flex items-center justify-center hover:bg-success-200 dark:hover:bg-success-600/35" 
+                                            data-id="${row.containerId}" title="Generate Report">
+                                        <iconify-icon icon="mdi:file-excel-outline" class="text-base"></iconify-icon>
+                                    </button>`;
+
+                                    actionsHtml += `
+                                    <button class="link-receive-btn inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30"
+                                            data-id="${row.containerId}" 
+                                            data-container-no="${row.containerNo_GW}"
+                                            title="Receive Pallets">
+                                        <iconify-icon icon="mdi:link-variant" class="text-base"></iconify-icon>
+                                        Receive Pallets
+                                    </button>`;
+                                } else {
+                                    actionsHtml += `
+                                    <button class="link-receive-btn inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30"
+                                           data-id="${row.containerId}" 
+                                           data-container-no="${row.containerNo_GW}"
+                                           title="Receive Pallets">
+                                        <iconify-icon icon="mdi:link-variant" class="text-base"></iconify-icon>
+                                        Receive Pallets
+                                    </button>`;
+                                }
+
+                                actionsHtml += '</div>';
+                                return actionsHtml;
+                            }
+                        });
+                        break;
+                }
+            }
+        });
+
+        return dynamicColumns;
     }
     
     // Set up event handlers

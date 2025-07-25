@@ -74,6 +74,7 @@ namespace WMS.Application.Services
             _awsS3Service = s3Service;
             _locationService = locationService;
         }
+        #region RawMaterial API
         public async Task<ApiResponseDto<Guid>> CreateRawMaterialAsync(
     RawMaterialCreateDto dto,
     List<RM_ReceivePalletPhotoUploadDto> photos,
@@ -401,8 +402,8 @@ namespace WMS.Application.Services
                 return ApiResponseDto<Guid>.ErrorResult("An unexpected error occurred.", new List<string> { ex.Message });
             }
         }
-
-        //web create raw material
+        #endregion
+        #region rawMaterial Web
         public async Task<ApiResponseDto<Guid>> CreateRawMaterialFromWebAsync(
     RawMaterialCreateWebDto dto,
     List<RM_ReceivePalletPhotoWebUploadDto> photos,
@@ -602,15 +603,7 @@ namespace WMS.Application.Services
                     new List<string> { ex.Message });
             }
         }
-
-
-
-
-
-
-
-
-        //unused
+        #region Load RawMaterial Page
         public async Task<List<GIV_RawMaterial>> GetAllRawMaterialsAsync()
         {
             _logger.LogInformation("Fetching all raw materials with related receives, pallets, and items.");
@@ -916,7 +909,7 @@ namespace WMS.Application.Services
                 }).ToList()
             };
         }
-
+        #endregion
         public async Task<ServiceWebResult> ReleaseRawMaterialAsync(RawMaterialReleaseSubmitDto rawMaterialReleaseDto, string userId)
         {
             _logger.LogInformation("Starting raw material release for user {UserId} and material {RawMaterialId}", userId, rawMaterialReleaseDto.RawMaterialId);
@@ -1643,7 +1636,7 @@ namespace WMS.Application.Services
             };
         }
 
-        // Helper method to extract date filters from search term
+        #region Helper method to extract date filters from search term
         private bool TryExtractDateFilters(string searchTerm, out string cleanSearchTerm, out DateTime? startDate, out DateTime? endDate)
         {
             // Initialize outputs
@@ -1836,6 +1829,7 @@ namespace WMS.Application.Services
                    longDate.ToLower().Contains(searchTerm.ToLower()) ||
                    monthYear.ToLower().Contains(searchTerm.ToLower());
         }
+        #endregion
         public async Task<PaginatedResult<RM_ReceivePalletDetailsDto>> GetPaginatedPalletsByReceiveIdAsync(
     Guid receiveId,
     int start,
@@ -2150,6 +2144,7 @@ namespace WMS.Application.Services
             _logger.LogInformation("Receive updated successfully: {ReceiveId}", dto.Id);
             return ApiResponseDto<string>.SuccessResult("Receive updated successfully.");
         }
+        #region Import Raw Materials data
         public async Task<RawMaterialImportResult> ImportRawMaterialsAsync(IFormFile file, Guid warehouseId)
         {
             _logger.LogInformation("Importing raw materials from file: {FileName}", file.FileName);
@@ -2469,7 +2464,7 @@ namespace WMS.Application.Services
                 return result;
             }
         }
-
+        #endregion
         public async Task<(byte[] fileContent, string fileName)> GenerateRawMaterialExcelAsync(DateTime startDate, DateTime endDate)
         {
             _logger.LogInformation("Generating raw material report from {Start} to {End} (monthly)", startDate, endDate);
@@ -3044,7 +3039,7 @@ namespace WMS.Application.Services
 
             return (false, null);
         }
-
+        #region release and release detail
         public async Task<PaginatedResult<RM_ReleaseTableRowDto>> GetPaginatedReleasesByRawMaterialIdAsync(
     Guid rawMaterialId,
     int start,
@@ -3367,7 +3362,8 @@ namespace WMS.Application.Services
                 FilteredCount = filteredCount
             };
         }
-        // Add these methods to your RawMaterialService.cs class
+#endregion
+        #region Job Releases View
 
         public async Task<PaginatedResult<JobReleaseTableRowDto>> GetPaginatedJobReleasesAsync(
             int start,
@@ -3670,8 +3666,8 @@ namespace WMS.Application.Services
                 FilteredCount = filteredCount
             };
         }
-
-        // Helper methods for status determination
+        #endregion
+        #region Helper methods for job status determination
         private bool IsPastNoonOnReleaseDate(DateTime releaseDate, DateTime currentTime)
         {
             var noonOnReleaseDate = releaseDate.Date.AddHours(12);
@@ -3736,6 +3732,7 @@ namespace WMS.Application.Services
                 _ => "status-scheduled"
             };
         }
+        #endregion
         public async Task<(byte[] fileContent, string fileName)> ExportJobReleaseToExcelAsync(Guid jobId)
         {
             _logger.LogInformation("Starting Excel export for JobId: {JobId}", jobId);
@@ -3835,7 +3832,7 @@ namespace WMS.Application.Services
 
             return (package.GetAsByteArray(), fileName);
         }
-
+        #region Create Job Release load
         public async Task<List<MaterialForJobReleaseDto>> GetAvailableMaterialsForJobReleaseAsync()
         {
             _logger.LogInformation("Fetching available materials for job release");
@@ -3972,7 +3969,8 @@ namespace WMS.Application.Services
             _logger.LogInformation("Prepared inventory data for {Count} materials", inventoryDtos.Count);
             return inventoryDtos.OrderBy(m => m.MaterialNo).ToList();
         }
-
+        #endregion
+        #region Create Job Release Submit
         public async Task<ServiceWebResult> CreateJobReleaseAsync(JobReleaseCreateDto dto, string userId)
         {
             _logger.LogInformation("Creating job release for user {UserId} with {MaterialCount} materials",
@@ -4625,5 +4623,12 @@ namespace WMS.Application.Services
 
             return response;
         }
+        #endregion
+
+        #region Job Release Delete
+
+        #endregion
+
+        #endregion
     }
 }

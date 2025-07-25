@@ -134,6 +134,7 @@
             public const string IMPORT_CEVA = "JobImportCEVA";
             public const string EXPORT_FCL = "JobFCL";
             public const string EXPORT_FCL_WL = "JobFCLWL";
+            public const string EXPORT_FCL_RDC = "JobFCLRDC";
         }
     }
 }

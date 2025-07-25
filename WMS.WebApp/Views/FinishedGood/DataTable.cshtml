@@ -19,8 +19,9 @@
                     @if (ViewBag.HasWriteAccess == true)
                     {
                         <a href="@Url.Action("JobReleases", "FinishedGood")"
-                        class="btn btn-warning text-sm btn-sm px-3 py-3 rounded-lg flex items-center gap-2">
-                            <iconify-icon icon="mdi:briefcase-outline" class="icon text-xl line-height-1"></iconify-icon>
+                           class="inline-flex items-center gap-2 bg-warning-100 dark:bg-warning-600/25 text-warning-600 dark:text-warning-400 rounded px-3 py-2 text-sm font-medium hover:bg-warning-200 transition"
+                           title="View Job Releases">
+                            <iconify-icon icon="mdi:briefcase-outline" width="20" height="20"></iconify-icon>
                             View Job Releases
                         </a>
                     }
