@@ -17,7 +17,7 @@ namespace WMS.Domain.DTOs.GIV_FinishedGood.Web
         public int PalletCount { get; set; }
         public int ItemCount { get; set; }
         public bool IsCompleted { get; set; }
-
+        public bool HasDeleteAccess { get; set; }
         // Display helpers
         public string ReleaseTypeText
         {

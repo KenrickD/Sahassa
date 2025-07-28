@@ -23,5 +23,6 @@ namespace WMS.Domain.DTOs.API
         public string? HBL { get; set; }
         public string? Marks { get; set; }
         public string? JobType { get; set; }
+        public bool IsGinger { get; set; }
     }
 }

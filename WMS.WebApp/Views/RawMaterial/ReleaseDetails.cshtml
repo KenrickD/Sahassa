@@ -173,6 +173,7 @@
                     <th>Pack Size</th>
                     <th>Status</th>
                     <th>Release Info</th>
+                    <th>Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -448,6 +449,31 @@
                                 return '<span class="text-muted">Not released yet</span>';
                             }
                         }
+                    },
+                    {
+                        data: null,
+                        orderable: false,
+                        searchable: false,
+                        width: "80px",
+                        render: function(data, type, row) {
+                            let buttons = `<div class="flex gap-1">`;
+                            
+                            // Only show delete button if user has delete access
+                            if (row.hasDeleteAccess) {
+                                const displayName = row.isEntirePallet ? 
+                                    `Pallet ${row.palletCode}` : 
+                                    `Item ${row.itemCode}`;
+                                    
+                                buttons += `
+                                    <button onclick="deleteReleaseDetail('${row.id}', '${displayName}')" 
+                                            class="btn btn-sm btn-danger" title="Delete Release Detail">
+                                        <iconify-icon icon="lucide:trash-2"></iconify-icon>
+                                    </button>`;
+                            }
+                            
+                            buttons += `</div>`;
+                            return buttons;
+                        }
                     }
                 ],
                 order: [[0, 'asc'], [1, 'asc']],
@@ -519,5 +545,70 @@
                 closeItemCodesModal();
             }
         });
+        function deleteReleaseDetail(releaseDetailId, displayName) {
+    Swal.fire({
+        title: 'Delete Release Detail?',
+        html: `Are you sure you want to delete the release detail for <strong>${displayName}</strong>?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, Delete',
+        cancelButtonText: 'Cancel',
+        reverseButtons: true
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Show loading state
+            Swal.fire({
+                title: 'Deleting...',
+                text: 'Please wait while we delete the release detail.',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                showConfirmButton: false,
+                willOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            // Make the delete request
+            $.post('/RawMaterial/DeleteReleaseDetail', {
+                releaseDetailId: releaseDetailId,
+                __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+            })
+            .done(function(response) {
+                if (response.success) {
+                    Swal.fire({
+                        title: 'Deleted!',
+                        text: response.message,
+                        icon: 'success',
+                        timer: 3000,
+                        showConfirmButton: false
+                    });
+                    
+                    // Refresh the DataTable
+                    if ($.fn.DataTable.isDataTable('#release-details-table')) {
+                        $('#release-details-table').DataTable().ajax.reload();
+                    }
+                } else {
+                    Swal.fire({
+                        title: 'Delete Failed',
+                        text: response.message,
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
+                }
+            })
+            .fail(function(xhr, status, error) {
+                Swal.fire({
+                    title: 'Error',
+                    text: 'An error occurred while deleting the release detail. Please try again.',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+                console.error('Delete release detail error:', error);
+            });
+        }
+    });
+}
     </script>
 }

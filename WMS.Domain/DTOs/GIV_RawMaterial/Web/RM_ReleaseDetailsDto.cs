@@ -44,5 +44,7 @@ namespace WMS.Domain.DTOs.GIV_RawMaterial.Web
         public string ItemCodesDisplay => IsEntirePallet && AllItemCodes.Any()
             ? string.Join(", ", AllItemCodes)
             : (ItemCode ?? "-");
+
+        public bool HasDeleteAccess { get; set; }
     }
 }

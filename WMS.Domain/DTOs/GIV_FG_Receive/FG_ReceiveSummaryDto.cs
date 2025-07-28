@@ -20,5 +20,6 @@ namespace WMS.Domain.DTOs.GIV_FG_Receive
         public int BalanceQuantity { get; set; }
         public int BalancePallet { get; set; }
         public bool HasEditAccess { get; set; }
+        public string? PO { get; set; }
     }
 }

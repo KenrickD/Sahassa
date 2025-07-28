@@ -42,6 +42,7 @@
                 { key: 'containerURL', title: 'URL', visible: true },
                 { key: 'isLoose', title: 'IsLoose', visible: true },
                 { key: 'isSamplingArrAtWarehouse', title: 'IsSampling', visible: true },
+                { key: 'isGinger', title: 'IsGinger', visible: true },
                 { key: 'photos', title: 'Photos', visible: true },
                 { key: 'addPhoto', title: 'Add Photo', visible: true },
                 { key: 'attachments', title: 'ATCH', visible: true },
@@ -144,7 +145,7 @@
                 let headerContent = `<div class="flex items-center gap-2">${col.title}</div>`;
 
                 // Special handling for checkbox columns
-                if (col.key === 'isLoose' || col.key === 'isSamplingArrAtWarehouse') {
+                if (col.key === 'isLoose' || col.key === 'isSamplingArrAtWarehouse' || col.key == 'isGinger') {
                     headerContent = `<div class="form-check style-check flex items-center">
                     <label class="ms-2 form-check-label">${col.title}</label>
                 </div>`;
@@ -351,7 +352,18 @@
                             }
                         });
                         break;
-
+                    case 'isGinger':
+                        dynamicColumns.push({
+                            data: 'isGinger',
+                            width: '5%',
+                            render: function (data) {
+                                const isChecked = data === true ? 'checked' : '';
+                                return `<div class="form-check style-check flex items-center">
+                                        <input class="form-check-input product-select disabled" disabled type="checkbox" value="${data}" ${isChecked}>
+                                    </div>`;
+                            }
+                        });
+                        break;
                     case 'photos':
                         dynamicColumns.push({
                             data: 'containerPhotos',

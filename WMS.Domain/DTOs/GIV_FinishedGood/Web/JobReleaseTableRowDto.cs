@@ -24,5 +24,7 @@ namespace WMS.Domain.DTOs.GIV_FinishedGood.Web
             : CreatedBy;
 
         public string JobIdShort => JobId.ToString().Substring(0, 8).ToUpper();
+
+        public bool HasDeleteAccess { get; set; }
     }
 }

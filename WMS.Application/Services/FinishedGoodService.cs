@@ -881,7 +881,15 @@ namespace WMS.Application.Services
                     .ThenInclude(r => r.FG_ReceivePallets)
                         .ThenInclude(p => p.FG_ReceivePalletItems)
                 .Where(fg => !fg.IsDeleted);
-
+            query = query.Where(fg =>
+                fg.FG_Receive
+                    .SelectMany(r => r.FG_ReceivePallets)
+                    .SelectMany(p => p.FG_ReceivePalletItems)
+                    .Any(i => !i.IsReleased) || // Has unreleased items (balance qty > 0)
+                fg.FG_Receive
+                    .SelectMany(r => r.FG_ReceivePallets)
+                    .Any(p => p.FG_ReceivePalletItems.Any(i => !i.IsReleased)) // Has pallets with unreleased items (balance pallets > 0)
+            );
             if (!string.IsNullOrEmpty(search))
             {
                 query = query.Where(fg => fg.SKU.Contains(search) || fg.Description.Contains(search));
@@ -1010,6 +1018,7 @@ namespace WMS.Application.Services
                     Id = r.Id,
                     ReceivedDate = r.ReceivedDate,
                     PackSize = allPallets.Sum(p => p.PackSize),
+                    PO = r.PO,
                     TotalQuantity = allItems.Count(),
                     TotalPallet = allPallets.Count(),
                     BalanceQuantity = allItems.Count(i => !i.IsReleased),
@@ -1995,7 +2004,8 @@ namespace WMS.Application.Services
                     BatchNo = d.GIV_FG_Receive?.BatchNo ?? "-",
                     LocationCode = d.GIV_FG_ReceivePallet?.Location?.Barcode,
                     ReceivedDate = d.GIV_FG_Receive?.ReceivedDate ?? DateTime.MinValue,
-                    PackSize = d.GIV_FG_ReceivePallet?.PackSize ?? 0
+                    PackSize = d.GIV_FG_ReceivePallet?.PackSize ?? 0,
+                    HasDeleteAccess = _currentUserService.HasPermission(AppConsts.Permissions.FINISHED_GOODS_DELETE)
                 };
             }).ToList();
 
@@ -2112,7 +2122,8 @@ namespace WMS.Application.Services
                     TotalPallets = totalPallets,
                     TotalItems = totalItems,
                     JobStatus = jobStatus,
-                    CompletionPercentage = Math.Round(completionPercentage, 1)
+                    CompletionPercentage = Math.Round(completionPercentage, 1),
+                    HasDeleteAccess = _currentUserService.HasPermission(AppConsts.Permissions.FINISHED_GOODS_DELETE)
                 };
 
                 jobReleaseDtos.Add(dto);
@@ -2270,7 +2281,8 @@ namespace WMS.Application.Services
                     StatusClass = GetReleaseStatusClass(status),
                     PalletCount = palletCount,
                     ItemCount = itemCount,
-                    IsCompleted = release.ActualReleaseDate.HasValue
+                    IsCompleted = release.ActualReleaseDate.HasValue,
+                    HasDeleteAccess = _currentUserService.HasPermission(AppConsts.Permissions.FINISHED_GOODS_DELETE)
                 };
 
                 individualReleaseDtos.Add(dto);
@@ -2474,10 +2486,15 @@ namespace WMS.Application.Services
                 // Process receives with available inventory
                 foreach (var receive in finishedGood.FG_Receive.Where(r => r.FG_ReceivePallets.Any(p => p.FG_ReceivePalletItems.Any(i => !i.IsReleased))))
                 {
+                    // Get batch number from the first available item instead of receive (Req by sooshin 25/07/2025)
+                    var firstAvailableItem = receive.FG_ReceivePallets
+                        .SelectMany(p => p.FG_ReceivePalletItems)
+                        .Where(i => !i.IsReleased)
+                        .FirstOrDefault();
                     var receiveDto = new JobReleaseReceiveDto
                     {
                         Id = receive.Id,
-                        BatchNo = receive.BatchNo,
+                        BatchNo = firstAvailableItem?.BatchNo,
                         ReceivedDate = receive.ReceivedDate,
                         ReceivedBy = receive.ReceivedBy
                     };
@@ -3012,6 +3029,323 @@ namespace WMS.Application.Services
             return conflicts;
         }
 
+        #endregion
+
+        #region Job Release Delete
+        public async Task<ServiceWebResult> DeleteReleaseDetailAsync(Guid releaseDetailId, string userId)
+        {
+            _logger.LogInformation("Starting delete operation for FG ReleaseDetail {ReleaseDetailId} by user {UserId}",
+                releaseDetailId, userId);
+
+            using var transaction = await _dbContext.Database.BeginTransactionAsync();
+            try
+            {
+                // Get release detail with row-level locking and include related entities
+                var releaseDetail = await _dbContext.GIV_FG_ReleaseDetails
+                    .Include(rd => rd.GIV_FG_ReceivePallet)
+                    .Include(rd => rd.GIV_FG_ReceivePalletItem)
+                    .Include(rd => rd.GIV_FG_Release)
+                        .ThenInclude(r => r.GIV_FinishedGood)
+                    .Where(rd => rd.Id == releaseDetailId && !rd.IsDeleted)
+                    .FirstOrDefaultAsync();
+
+                if (releaseDetail == null)
+                {
+                    _logger.LogWarning("FG ReleaseDetail {ReleaseDetailId} not found or already deleted", releaseDetailId);
+                    return new ServiceWebResult
+                    {
+                        Success = false,
+                        ErrorMessage = "Release detail not found or already deleted."
+                    };
+                }
+
+                // Validate deletion criteria with AND logic
+                var validationResult = await ValidateFGReleaseDetailDeletionAsync(releaseDetail);
+                if (!validationResult.Success)
+                {
+                    _logger.LogWarning("FG ReleaseDetail {ReleaseDetailId} deletion validation failed: {Error}",
+                        releaseDetailId, validationResult.ErrorMessage);
+                    return validationResult;
+                }
+
+                // Perform soft delete
+                releaseDetail.IsDeleted = true;
+                releaseDetail.ModifiedBy = userId;
+                releaseDetail.ModifiedAt = DateTime.UtcNow;
+
+                await _dbContext.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                _logger.LogInformation("Successfully deleted FG ReleaseDetail {ReleaseDetailId} by user {UserId}",
+                    releaseDetailId, userId);
+
+                return new ServiceWebResult
+                {
+                    Success = true,
+                    ErrorMessage = $"Release detail for {GetFGReleaseDetailDisplayName(releaseDetail)} deleted successfully."
+                };
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Error deleting FG ReleaseDetail {ReleaseDetailId} by user {UserId}",
+                    releaseDetailId, userId);
+                return new ServiceWebResult
+                {
+                    Success = false,
+                    ErrorMessage = "An error occurred while deleting the release detail."
+                };
+            }
+        }
+
+        public async Task<ServiceWebResult> DeleteReleaseAsync(Guid releaseId, string userId)
+        {
+            _logger.LogInformation("Starting delete operation for FG Release {ReleaseId} by user {UserId}",
+                releaseId, userId);
+
+            using var transaction = await _dbContext.Database.BeginTransactionAsync();
+            try
+            {
+                // Get release with all related data and row-level locking
+                var release = await _dbContext.GIV_FG_Releases
+                    .Include(r => r.GIV_FinishedGood)
+                    .Include(r => r.GIV_FG_ReleaseDetails.Where(rd => !rd.IsDeleted))
+                        .ThenInclude(rd => rd.GIV_FG_ReceivePallet)
+                    .Include(r => r.GIV_FG_ReleaseDetails.Where(rd => !rd.IsDeleted))
+                        .ThenInclude(rd => rd.GIV_FG_ReceivePalletItem)
+                    .Where(r => r.Id == releaseId && !r.IsDeleted)
+                    .FirstOrDefaultAsync();
+
+                if (release == null)
+                {
+                    _logger.LogWarning("FG Release {ReleaseId} not found or already deleted", releaseId);
+                    return new ServiceWebResult
+                    {
+                        Success = false,
+                        ErrorMessage = "Release not found or already deleted."
+                    };
+                }
+
+                // Validate deletion criteria for the release and all its details
+                var validationResult = await ValidateFGReleaseDeletionAsync(release);
+                if (!validationResult.Success)
+                {
+                    _logger.LogWarning("FG Release {ReleaseId} deletion validation failed: {Error}",
+                        releaseId, validationResult.ErrorMessage);
+                    return validationResult;
+                }
+
+                // Perform soft delete on release and all its details
+                release.IsDeleted = true;
+                release.ModifiedBy = userId;
+                release.ModifiedAt = DateTime.UtcNow;
+
+                foreach (var detail in release.GIV_FG_ReleaseDetails)
+                {
+                    detail.IsDeleted = true;
+                    detail.ModifiedBy = userId;
+                    detail.ModifiedAt = DateTime.UtcNow;
+                }
+
+                await _dbContext.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                _logger.LogInformation("Successfully deleted FG Release {ReleaseId} with {DetailCount} details by user {UserId}",
+                    releaseId, release.GIV_FG_ReleaseDetails.Count, userId);
+
+                return new ServiceWebResult
+                {
+                    Success = true,
+                    ErrorMessage = $"Release for {release.GIV_FinishedGood.SKU} deleted successfully with {release.GIV_FG_ReleaseDetails.Count} details."
+                };
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Error deleting FG Release {ReleaseId} by user {UserId}", releaseId, userId);
+                return new ServiceWebResult
+                {
+                    Success = false,
+                    ErrorMessage = "An error occurred while deleting the release."
+                };
+            }
+        }
+
+        public async Task<ServiceWebResult> DeleteJobReleasesAsync(Guid jobId, string userId)
+        {
+            _logger.LogInformation("Starting delete operation for FG Job {JobId} by user {UserId}", jobId, userId);
+
+            using var transaction = await _dbContext.Database.BeginTransactionAsync();
+            try
+            {
+                // Get all releases in the job with related data and row-level locking
+                var releases = await _dbContext.GIV_FG_Releases
+                    .Include(r => r.GIV_FinishedGood)
+                    .Include(r => r.GIV_FG_ReleaseDetails.Where(rd => !rd.IsDeleted))
+                        .ThenInclude(rd => rd.GIV_FG_ReceivePallet)
+                    .Include(r => r.GIV_FG_ReleaseDetails.Where(rd => !rd.IsDeleted))
+                        .ThenInclude(rd => rd.GIV_FG_ReceivePalletItem)
+                    .Where(r => r.JobId == jobId && !r.IsDeleted)
+                    .ToListAsync();
+
+                if (!releases.Any())
+                {
+                    _logger.LogWarning("No FG releases found for Job {JobId}", jobId);
+                    return new ServiceWebResult
+                    {
+                        Success = false,
+                        ErrorMessage = "Job not found or no releases to delete."
+                    };
+                }
+
+                // Validate deletion criteria for all releases in the job
+                var validationResult = await ValidateFGJobDeletionAsync(releases);
+                if (!validationResult.Success)
+                {
+                    _logger.LogWarning("FG Job {JobId} deletion validation failed: {Error}", jobId, validationResult.ErrorMessage);
+                    return validationResult;
+                }
+
+                // Perform soft delete on all releases and their details
+                var totalDetails = 0;
+                foreach (var release in releases)
+                {
+                    release.IsDeleted = true;
+                    release.ModifiedBy = userId;
+                    release.ModifiedAt = DateTime.UtcNow;
+
+                    foreach (var detail in release.GIV_FG_ReleaseDetails)
+                    {
+                        detail.IsDeleted = true;
+                        detail.ModifiedBy = userId;
+                        detail.ModifiedAt = DateTime.UtcNow;
+                        totalDetails++;
+                    }
+                }
+
+                await _dbContext.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                _logger.LogInformation("Successfully deleted FG Job {JobId} with {ReleaseCount} releases and {DetailCount} details by user {UserId}",
+                    jobId, releases.Count, totalDetails, userId);
+
+                return new ServiceWebResult
+                {
+                    Success = true,
+                    ErrorMessage = $"Job deleted successfully. Removed {releases.Count} releases with {totalDetails} details."
+                };
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Error deleting FG Job {JobId} by user {UserId}", jobId, userId);
+                return new ServiceWebResult
+                {
+                    Success = false,
+                    ErrorMessage = "An error occurred while deleting the job releases."
+                };
+            }
+        }
+        private async Task<ServiceWebResult> ValidateFGReleaseDetailDeletionAsync(GIV_FG_ReleaseDetails releaseDetail)
+        {
+            // Check if ActualReleaseDate is null (AND condition 1)
+            if (releaseDetail.ActualReleaseDate.HasValue)
+            {
+                return new ServiceWebResult
+                {
+                    Success = false,
+                    ErrorMessage = $"Cannot delete {GetFGReleaseDetailDisplayName(releaseDetail)} - it has already been actually released on {releaseDetail.ActualReleaseDate.Value:yyyy-MM-dd HH:mm}."
+                };
+            }
+
+            // Check pallet/item IsReleased status (AND condition 2)
+            if (releaseDetail.IsEntirePallet)
+            {
+                // For entire pallet releases, check pallet IsReleased status
+                if (releaseDetail.GIV_FG_ReceivePallet?.IsReleased == true)
+                {
+                    return new ServiceWebResult
+                    {
+                        Success = false,
+                        ErrorMessage = $"Cannot delete pallet release - Pallet {releaseDetail.GIV_FG_ReceivePallet.PalletCode} is already marked as released."
+                    };
+                }
+            }
+            else
+            {
+                // For individual item releases, check item IsReleased status
+                if (releaseDetail.GIV_FG_ReceivePalletItem?.IsReleased == true)
+                {
+                    return new ServiceWebResult
+                    {
+                        Success = false,
+                        ErrorMessage = $"Cannot delete item release - Item {releaseDetail.GIV_FG_ReceivePalletItem.ItemCode} is already marked as released."
+                    };
+                }
+            }
+
+            return new ServiceWebResult { Success = true };
+        }
+
+        private async Task<ServiceWebResult> ValidateFGReleaseDeletionAsync(GIV_FG_Release release)
+        {
+            // Check if the release itself has ActualReleaseDate
+            if (release.ActualReleaseDate.HasValue)
+            {
+                return new ServiceWebResult
+                {
+                    Success = false,
+                    ErrorMessage = $"Cannot delete release - Release for {release.GIV_FinishedGood.SKU} was actually released on {release.ActualReleaseDate.Value:yyyy-MM-dd HH:mm}."
+                };
+            }
+
+            // Validate all release details using the same criteria
+            foreach (var detail in release.GIV_FG_ReleaseDetails)
+            {
+                var detailValidation = await ValidateFGReleaseDetailDeletionAsync(detail);
+                if (!detailValidation.Success)
+                {
+                    return new ServiceWebResult
+                    {
+                        Success = false,
+                        ErrorMessage = $"Cannot delete release - {detailValidation.ErrorMessage}"
+                    };
+                }
+            }
+
+            return new ServiceWebResult { Success = true };
+        }
+
+        private async Task<ServiceWebResult> ValidateFGJobDeletionAsync(List<GIV_FG_Release> releases)
+        {
+            // Validate all releases in the job
+            foreach (var release in releases)
+            {
+                var releaseValidation = await ValidateFGReleaseDeletionAsync(release);
+                if (!releaseValidation.Success)
+                {
+                    return new ServiceWebResult
+                    {
+                        Success = false,
+                        ErrorMessage = $"Cannot delete job - {releaseValidation.ErrorMessage}"
+                    };
+                }
+            }
+
+            return new ServiceWebResult { Success = true };
+        }
+
+        private string GetFGReleaseDetailDisplayName(GIV_FG_ReleaseDetails releaseDetail)
+        {
+            if (releaseDetail.IsEntirePallet)
+            {
+                return $"pallet {releaseDetail.GIV_FG_ReceivePallet?.PalletCode ?? "Unknown"}";
+            }
+            else
+            {
+                return $"item {releaseDetail.GIV_FG_ReceivePalletItem?.ItemCode ?? "Unknown"}";
+            }
+        }
         #endregion
     }
 }

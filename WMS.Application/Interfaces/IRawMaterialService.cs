@@ -131,5 +131,8 @@ namespace WMS.Application.Interfaces
         Task<RMServiceWebResult> ValidateJobReleaseConflictsAsync(JobReleaseCreateDto dto);
         Task<MaterialConflictResponse> GetMaterialReleaseConflictsAsync(Guid materialId);
         Task<Dictionary<Guid, MaterialConflictResponse>> GetBatchMaterialReleaseConflictsAsync(List<Guid> materialIds);
+        Task<ServiceWebResult> DeleteReleaseDetailAsync(Guid releaseDetailId, string userId);
+        Task<ServiceWebResult> DeleteReleaseAsync(Guid releaseId, string userId);
+        Task<ServiceWebResult> DeleteJobReleasesAsync(Guid jobId, string userId);
     }
 }

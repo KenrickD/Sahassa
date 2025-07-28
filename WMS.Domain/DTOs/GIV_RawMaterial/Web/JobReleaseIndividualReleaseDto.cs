@@ -17,6 +17,7 @@ namespace WMS.Domain.DTOs.GIV_RawMaterial.Web
         public int PalletCount { get; set; }
         public int ItemCount { get; set; }
         public bool IsCompleted { get; set; }
+        public bool HasDeleteAccess { get; set; }
 
         // Display helpers
         public string ReleaseTypeText

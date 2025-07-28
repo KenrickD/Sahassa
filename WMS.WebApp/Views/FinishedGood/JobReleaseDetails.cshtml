@@ -278,6 +278,61 @@
     .card:nth-child(5) {
         animation-delay: 0.5s;
     }
+
+    .btn-danger {
+        background-color: #dc3545;
+        border-color: #dc3545;
+        color: white;
+    }
+
+        .btn-danger:hover {
+            background-color: #c82333;
+            border-color: #bd2130;
+        }
+
+    .btn-info {
+        background-color: #17a2b8;
+        border-color: #17a2b8;
+        color: white;
+    }
+
+        .btn-info:hover {
+            background-color: #138496;
+            border-color: #117a8b;
+        }
+
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+        line-height: 1.5;
+        border-radius: 0.2rem;
+        min-width: 32px;
+        height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .flex {
+        display: flex;
+    }
+
+    .gap-1 {
+        gap: 0.25rem;
+    }
+
+    /* Mobile responsiveness */
+    @@media (max-width: 768px) {
+        .btn-sm
+
+    {
+        padding: 0.125rem 0.25rem;
+        font-size: 0.75rem;
+        min-width: 28px;
+        height: 28px;
+    }
+
+    }
 </style>
 
 @section Scripts {
@@ -359,15 +414,25 @@
                     },
                     {
                         data: null,
-                        orderable: false,
-                        searchable: false,
                         render: function(data, type, row) {
-                            return `
-                                <button class="btn btn-sm btn-primary" onclick="viewIndividualReleaseDetails('${row.releaseId}')">
-                                    <iconify-icon icon="lucide:eye"></iconify-icon>
-                                    View Details
-                                </button>
-                            `;
+                            let buttons = `
+                                <div class="flex gap-1">
+                                    <button onclick="viewIndividualReleaseDetails('${row.releaseId}')"
+                                            class="btn btn-sm btn-info" title="View Details">
+                                        <iconify-icon icon="lucide:eye"></iconify-icon>
+                                    </button>`;
+
+                            // Only show delete button if user has delete access
+                            if (row.hasDeleteAccess) {
+                                buttons += `
+                                    <button onclick="deleteRelease('${row.releaseId}', '${row.sku}')"
+                                            class="btn btn-sm btn-danger" title="Delete Release">
+                                        <iconify-icon icon="lucide:trash-2"></iconify-icon>
+                                    </button>`;
+                            }
+
+                            buttons += `</div>`;
+                            return buttons;
                         }
                     }
                 ],
@@ -457,6 +522,73 @@
                     button.prop('disabled', false);
                     toastr.success('Excel export completed successfully');
                 }, 2000);
+            });
+        }
+
+        function deleteRelease(releaseId, sku) {
+            Swal.fire({
+                title: 'Delete Release?',
+                html: `Are you sure you want to delete the release for <strong>${sku}</strong>?<br><br>
+                       <span class="text-warning">This will delete the release and all its details.</span>`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Yes, Delete Release',
+                cancelButtonText: 'Cancel',
+                reverseButtons: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Show loading state
+                    Swal.fire({
+                        title: 'Deleting...',
+                        text: 'Please wait while we delete the release.',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                        showConfirmButton: false,
+                        willOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+
+                    // Make the delete request
+                    $.post('/FinishedGood/DeleteRelease', {
+                        releaseId: releaseId,
+                        __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                    })
+                    .done(function(response) {
+                        if (response.success) {
+                            Swal.fire({
+                                title: 'Deleted!',
+                                text: response.message,
+                                icon: 'success',
+                                timer: 3000,
+                                showConfirmButton: false
+                            });
+
+                            // Refresh the DataTable
+                            if ($.fn.DataTable.isDataTable('#job-release-details-table')) {
+                                $('#job-release-details-table').DataTable().ajax.reload();
+                            }
+                        } else {
+                            Swal.fire({
+                                title: 'Delete Failed',
+                                text: response.message,
+                                icon: 'error',
+                                confirmButtonText: 'OK'
+                            });
+                        }
+                    })
+                    .fail(function(xhr, status, error) {
+                        Swal.fire({
+                            title: 'Error',
+                            text: 'An error occurred while deleting the release. Please try again.',
+                            icon: 'error',
+                            confirmButtonText: 'OK'
+                        });
+                        console.error('Delete release error:', error);
+                    });
+                }
             });
         }
     </script>

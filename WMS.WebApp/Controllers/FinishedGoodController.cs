@@ -1274,5 +1274,117 @@ namespace WMS.WebApp.Controllers
             }
         }
         #endregion
+        #region Job Release Delete
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteReleaseDetail(Guid releaseDetailId)
+        {
+            // Check permissions
+            if (!_currentUserService.HasPermission(AppConsts.Permissions.FINISHED_GOODS_DELETE))
+            {
+                _logger.LogWarning("User {UserId} denied access to delete FG release detail - insufficient permissions",
+                    _currentUserService.UserId);
+                return Json(new { success = false, message = "You don't have permission to delete release details." });
+            }
+
+            try
+            {
+                var result = await _finishedGoodService.DeleteReleaseDetailAsync(releaseDetailId, _currentUserService.UserId);
+
+                if (result.Success)
+                {
+                    _logger.LogInformation("FG ReleaseDetail {ReleaseDetailId} deleted successfully by user {UserId}",
+                        releaseDetailId, _currentUserService.UserId);
+                    return Json(new { success = true, message = result.ErrorMessage });
+                }
+                else
+                {
+                    _logger.LogWarning("Failed to delete FG ReleaseDetail {ReleaseDetailId}: {Error}",
+                        releaseDetailId, result.ErrorMessage);
+                    return Json(new { success = false, message = result.ErrorMessage });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting FG ReleaseDetail {ReleaseDetailId} by user {UserId}",
+                    releaseDetailId, _currentUserService.UserId);
+                return Json(new { success = false, message = "An unexpected error occurred while deleting the release detail." });
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteRelease(Guid releaseId)
+        {
+            // Check permissions
+            if (!_currentUserService.HasPermission(AppConsts.Permissions.FINISHED_GOODS_DELETE))
+            {
+                _logger.LogWarning("User {UserId} denied access to delete FG release - insufficient permissions",
+                    _currentUserService.UserId);
+                return Json(new { success = false, message = "You don't have permission to delete releases." });
+            }
+
+            try
+            {
+                var result = await _finishedGoodService.DeleteReleaseAsync(releaseId, _currentUserService.UserId);
+
+                if (result.Success)
+                {
+                    _logger.LogInformation("FG Release {ReleaseId} deleted successfully by user {UserId}",
+                        releaseId, _currentUserService.UserId);
+                    return Json(new { success = true, message = result.ErrorMessage });
+                }
+                else
+                {
+                    _logger.LogWarning("Failed to delete FG Release {ReleaseId}: {Error}",
+                        releaseId, result.ErrorMessage);
+                    return Json(new { success = false, message = result.ErrorMessage });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting FG Release {ReleaseId} by user {UserId}",
+                    releaseId, _currentUserService.UserId);
+                return Json(new { success = false, message = "An unexpected error occurred while deleting the release." });
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteJobReleases(Guid jobId)
+        {
+            // Check permissions
+            if (!_currentUserService.HasPermission(AppConsts.Permissions.FINISHED_GOODS_DELETE))
+            {
+                _logger.LogWarning("User {UserId} denied access to delete FG job releases - insufficient permissions",
+                    _currentUserService.UserId);
+                return Json(new { success = false, message = "You don't have permission to delete job releases." });
+            }
+
+            try
+            {
+                var result = await _finishedGoodService.DeleteJobReleasesAsync(jobId, _currentUserService.UserId);
+
+                if (result.Success)
+                {
+                    _logger.LogInformation("FG Job releases for Job {JobId} deleted successfully by user {UserId}",
+                        jobId, _currentUserService.UserId);
+                    return Json(new { success = true, message = result.ErrorMessage });
+                }
+                else
+                {
+                    _logger.LogWarning("Failed to delete FG Job releases for Job {JobId}: {Error}",
+                        jobId, result.ErrorMessage);
+                    return Json(new { success = false, message = result.ErrorMessage });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting FG Job releases for Job {JobId} by user {UserId}",
+                    jobId, _currentUserService.UserId);
+                return Json(new { success = false, message = "An unexpected error occurred while deleting the job releases." });
+            }
+        }
+        #endregion
     }
 }

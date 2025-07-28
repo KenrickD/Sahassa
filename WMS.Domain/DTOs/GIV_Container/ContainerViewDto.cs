@@ -28,5 +28,6 @@ namespace WMS.Domain.DTOs.GIV_Container
         public string? JobReference { get; set; }
         public string? SealNo { get; set; }
         public int Size { get; set; }
+        public bool IsGinger { get; set; }
     }
 }

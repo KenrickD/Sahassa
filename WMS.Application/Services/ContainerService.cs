@@ -539,6 +539,7 @@ namespace WMS.Application.Services
                     container.SealNo = container.SealNo ?? job.SealNumber;
                     container.Size = container.Size != 0 ? container.Size : containerSize;
                     container.SealNo = container.SealNo ?? job.SealNumber;
+                    container.IsGinger = job.IsGinger;
                 }
             }
             _logger.LogInformation("Returning paginated result with {Count} containers for ProcessType {ProcessType}", containerViewDtos.Count, processType);

@@ -28,7 +28,7 @@
 </div>
 
 <!-- Job Summary Cards -->
-<div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
     <div class="card p-4 text-center bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
         <h5 class="text-blue-700 dark:text-blue-300 text-sm font-medium mb-2">Materials</h5>
         <div class="text-2xl font-bold text-blue-800 dark:text-blue-200">@Model.MaterialCount</div>
@@ -44,11 +44,6 @@
         <div class="text-2xl font-bold text-purple-800 dark:text-purple-200">@Model.TotalItems</div>
         <div class="text-xs text-purple-600 dark:text-purple-400 mt-1">Individual Items</div>
     </div>
-   @*  <div class="card p-4 text-center bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800">
-        <h5 class="text-orange-700 dark:text-orange-300 text-sm font-medium mb-2">Completion</h5>
-        <div class="text-2xl font-bold text-orange-800 dark:text-orange-200">@Model.CompletionDisplay</div>
-        <div class="text-xs text-orange-600 dark:text-orange-400 mt-1">Progress</div>
-    </div> *@
     <div class="card p-4 text-center bg-gray-50 dark:bg-gray-900/20 border-gray-200 dark:border-gray-800">
         <h5 class="text-gray-700 dark:text-gray-300 text-sm font-medium mb-2">Status</h5>
         <div class="text-lg font-bold">
@@ -58,55 +53,152 @@
     </div>
 </div>
 
-<!-- Progress Bar -->
-@* <div class="card p-4 mb-6">
-    <h5 class="mb-3">Job Progress</h5>
-    <div class="progress-container">
-        <div class="progress-bar-large">
-            <div class="progress-fill" style="width: @Model.CompletionPercentage%">
-                <span class="progress-text">@Model.CompletionDisplay</span>
-            </div>
-        </div>
-        <div class="flex justify-between text-sm text-gray-600 dark:text-gray-400 mt-2">
-            <span>Started</span>
-            <span>@Model.CompletionDisplay Complete</span>
-            <span>Finished</span>
-        </div>
-    </div>
-</div> *@
-
 <!-- Individual Releases in Job -->
-<div class="card">
-    <div class="card-header">
-        <div class="flex justify-between items-center">
-            <h5 class="card-title">Individual Releases in this Job</h5>
-            <div class="text-sm text-gray-600 dark:text-gray-400">
-                <iconify-icon icon="lucide:info" class="mr-1"></iconify-icon>
-                <span class="hidden md:inline">Search by material number, description, or status</span>
-                <span class="md:hidden">Advanced search available</span>
+<div class="table-container">
+    <div class="card">
+        <div class="card-header">
+            <div class="flex justify-between items-center">
+                <h5 class="card-title">Individual Releases in this Job</h5>
+                <div class="text-sm text-gray-600 dark:text-gray-400">
+                    <iconify-icon icon="lucide:info" class="mr-1"></iconify-icon>
+                    <span class="hidden md:inline">Search by material number, description, or status</span>
+                    <span class="md:hidden">Advanced search available</span>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="card-body">
-        <table id="job-release-details-table" class="table table-striped" data-job-id="@Model.JobId">
-            <thead>
-                <tr>
-                    <th>Material No</th>
-                    <th>Description</th>
-                    <th>Release Date</th>
-                    <th>Status</th>
-                    <th>Release Type</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- Populated via DataTables -->
-            </tbody>
-        </table>
+        <div class="card-body">
+            <!-- Add responsive wrapper -->
+            <div class="table-responsive">
+                <table id="job-release-details-table" class="table table-striped" data-job-id="@Model.JobId">
+                    <thead>
+                        <tr>
+                            <th>Material No</th>
+                            <th>Description</th>
+                            <th>Release Date</th>
+                            <th>Status</th>
+                            <th>Release Type</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Populated via DataTables -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>
 
 <style>
+    /* Fix container width issues */
+    .table-container {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+    }
+
+    /* Table responsive wrapper */
+    .table-responsive {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Constrain table width */
+    #job-release-details-table {
+        width: 100% !important;
+        max-width: 100%;
+        table-layout: auto;
+    }
+
+    /* Prevent DataTables from expanding beyond container */
+    .dataTables_wrapper {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: hidden;
+    }
+
+    .dataTables_scroll {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    .dataTables_scrollBody {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    /* Fix column widths */
+    #job-release-details-table th,
+    #job-release-details-table td {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+        /* Specific column width constraints */
+        #job-release-details-table th:nth-child(1) {
+            width: 120px;
+            max-width: 120px;
+        }
+        /* Material No */
+        #job-release-details-table th:nth-child(2) {
+            width: 250px;
+            max-width: 250px;
+        }
+        /* Description */
+        #job-release-details-table th:nth-child(3) {
+            width: 120px;
+            max-width: 120px;
+        }
+        /* Release Date */
+        #job-release-details-table th:nth-child(4) {
+            width: 120px;
+            max-width: 120px;
+        }
+        /* Status */
+        #job-release-details-table th:nth-child(5) {
+            width: 120px;
+            max-width: 120px;
+        }
+        /* Release Type */
+        #job-release-details-table th:nth-child(6) {
+            width: 120px;
+            max-width: 120px;
+        }
+        /* Actions */
+
+        /* Apply same constraints to td elements */
+        #job-release-details-table td:nth-child(1) {
+            width: 120px;
+            max-width: 120px;
+        }
+
+        #job-release-details-table td:nth-child(2) {
+            width: 250px;
+            max-width: 250px;
+        }
+
+        #job-release-details-table td:nth-child(3) {
+            width: 120px;
+            max-width: 120px;
+        }
+
+        #job-release-details-table td:nth-child(4) {
+            width: 120px;
+            max-width: 120px;
+        }
+
+        #job-release-details-table td:nth-child(5) {
+            width: 120px;
+            max-width: 120px;
+        }
+
+        #job-release-details-table td:nth-child(6) {
+            width: 120px;
+            max-width: 120px;
+        }
+
     /* Progress bar styles */
     .progress-container {
         width: 100%;
@@ -158,10 +250,6 @@
         font-weight: 500;
     }
 
-    .dark .status-due {
-        background-color: rgba(162, 28, 175, 0.2);
-        color: #e879f9;
-    }
     .status-in-progress {
         background-color: #fef3c7;
         color: #92400e;
@@ -210,23 +298,93 @@
         font-weight: 500;
     }
 
+    /* Action buttons styling */
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+        line-height: 1.5;
+        border-radius: 0.2rem;
+        min-width: 32px;
+        height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .btn-danger {
+        background-color: #dc3545;
+        border-color: #dc3545;
+        color: white;
+    }
+
+        .btn-danger:hover {
+            background-color: #c82333;
+            border-color: #bd2130;
+        }
+
+    .btn-info {
+        background-color: #17a2b8;
+        border-color: #17a2b8;
+        color: white;
+    }
+
+        .btn-info:hover {
+            background-color: #138496;
+            border-color: #117a8b;
+        }
+
+    .flex {
+        display: flex;
+    }
+
+    .gap-1 {
+        gap: 0.25rem;
+    }
+
     /* Summary cards responsive grid */
     @@media (max-width: 768px) {
-        .grid-cols-1.md\\:grid-cols-5 {
-            grid-template-columns: repeat(2, 1fr);
-        }
+        .grid-cols-1.md\\:grid-cols-4
+
+    {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .table-responsive {
+        font-size: 0.875rem;
+    }
+
+    .btn-sm {
+        padding: 0.125rem 0.25rem;
+        font-size: 0.75rem;
+        min-width: 28px;
+        height: 28px;
+    }
+
+    #job-release-details-table th,
+    #job-release-details-table td {
+        padding: 0.5rem 0.25rem;
+    }
+
     }
 
     @@media (max-width: 640px) {
-        .grid-cols-1.md\\:grid-cols-5 {
-            grid-template-columns: 1fr;
-        }
+        .grid-cols-1.md\\:grid-cols-4
+
+    {
+        grid-template-columns: 1fr;
+    }
+
     }
 
     /* Dark mode adjustments */
     .dark .status-scheduled {
         background-color: rgba(59, 130, 246, 0.2);
         color: #93c5fd;
+    }
+
+    .dark .status-due {
+        background-color: rgba(162, 28, 175, 0.2);
+        color: #e879f9;
     }
 
     .dark .status-in-progress {
@@ -282,15 +440,18 @@
     }
 
     @@keyframes fadeInUp {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
-        }
+        from
 
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+    {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
     }
 
     /* Delay animation for each card */
@@ -333,6 +494,10 @@
             $('#job-release-details-table').DataTable({
                 processing: true,
                 serverSide: true,
+                responsive: false, // Disable DataTables responsive as we handle it with CSS
+                scrollX: true, // Enable horizontal scrolling
+                scrollCollapse: true,
+                autoWidth: false, // Prevent auto width calculation
                 ajax: {
                     url: `/RawMaterial/GetPaginatedJobReleaseDetails?jobId=${jobId}`,
                     type: 'POST',
@@ -344,11 +509,19 @@
                         return JSON.stringify(d);
                     }
                 },
+                columnDefs: [
+                    { width: "120px", targets: 0 }, // Material No
+                    { width: "250px", targets: 1 }, // Description
+                    { width: "120px", targets: 2 }, // Release Date
+                    { width: "120px", targets: 3 }, // Status
+                    { width: "120px", targets: 4 }, // Release Type
+                    { width: "120px", targets: 5, orderable: false, searchable: false } // Actions
+                ],
                 columns: [
                     {
                         data: 'materialNo',
                         render: function(data, type, row) {
-                            return `<span class="font-medium">${data}</span>`;
+                            return `<span class="font-medium" title="${data}">${data}</span>`;
                         }
                     },
                     {
@@ -358,10 +531,10 @@
                                 return '<span class="text-muted">-</span>';
                             }
                             // Truncate long descriptions
-                            if (data.length > 50) {
-                                return `<span title="${data}">${data.substring(0, 50)}...</span>`;
+                            if (data.length > 30) {
+                                return `<span title="${data}">${data.substring(0, 30)}...</span>`;
                             }
-                            return data;
+                            return `<span title="${data}">${data}</span>`;
                         }
                     },
                     {
@@ -397,15 +570,25 @@
                     },
                     {
                         data: null,
-                        orderable: false,
-                        searchable: false,
                         render: function(data, type, row) {
-                            return `
-                                <button class="btn btn-sm btn-primary" onclick="viewIndividualReleaseDetails('${row.releaseId}')">
-                                    <iconify-icon icon="lucide:eye"></iconify-icon>
-                                    View Details
-                                </button>
-                            `;
+                            let buttons = `
+                                <div class="flex gap-1">
+                                    <button onclick="viewIndividualReleaseDetails('${row.releaseId}')"
+                                            class="btn btn-sm btn-info" title="View Details">
+                                        <iconify-icon icon="lucide:eye"></iconify-icon>
+                                    </button>`;
+
+                            // Only show delete button if user has delete access
+                            if (row.hasDeleteAccess) {
+                                buttons += `
+                                    <button onclick="deleteRelease('${row.releaseId}', '${row.materialNo}')"
+                                            class="btn btn-sm btn-danger" title="Delete Release">
+                                        <iconify-icon icon="lucide:trash-2"></iconify-icon>
+                                    </button>`;
+                            }
+
+                            buttons += `</div>`;
+                            return buttons;
                         }
                     }
                 ],
@@ -431,6 +614,9 @@
                         $('.dataTables_length select').addClass('bg-gray-700 border-gray-600 text-white');
                         $(this).closest('.dataTables_wrapper').addClass('dark-mode-table');
                     }
+
+                    // Fix any width issues after initialization
+                    $(window).trigger('resize');
                 }
             });
         }
@@ -507,6 +693,73 @@
                 btn.html(originalHtml);
                 btn.prop('disabled', false);
             }, 2000);
+        }
+
+        function deleteRelease(releaseId, materialNo) {
+            Swal.fire({
+                title: 'Delete Release?',
+                html: `Are you sure you want to delete the release for <strong>${materialNo}</strong>?<br><br>
+                       <span class="text-warning">This will delete the release and all its details.</span>`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Yes, Delete Release',
+                cancelButtonText: 'Cancel',
+                reverseButtons: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Show loading state
+                    Swal.fire({
+                        title: 'Deleting...',
+                        text: 'Please wait while we delete the release.',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                        showConfirmButton: false,
+                        willOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+
+                    // Make the delete request
+                    $.post('/RawMaterial/DeleteRelease', {
+                        releaseId: releaseId,
+                        __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                    })
+                    .done(function(response) {
+                        if (response.success) {
+                            Swal.fire({
+                                title: 'Deleted!',
+                                text: response.message,
+                                icon: 'success',
+                                timer: 3000,
+                                showConfirmButton: false
+                            });
+
+                            // Refresh the DataTable
+                            if ($.fn.DataTable.isDataTable('#job-release-details-table')) {
+                                $('#job-release-details-table').DataTable().ajax.reload();
+                            }
+                        } else {
+                            Swal.fire({
+                                title: 'Delete Failed',
+                                text: response.message,
+                                icon: 'error',
+                                confirmButtonText: 'OK'
+                            });
+                        }
+                    })
+                    .fail(function(xhr, status, error) {
+                        Swal.fire({
+                            title: 'Error',
+                            text: 'An error occurred while deleting the release. Please try again.',
+                            icon: 'error',
+                            confirmButtonText: 'OK'
+                        });
+                        console.error('Delete release error:', error);
+                    });
+                }
+            });
         }
     </script>
 }

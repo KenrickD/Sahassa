@@ -1,4 +1,5 @@
-﻿@{
+﻿<!-- Updated JobReleases.cshtml with width fixes -->
+@{
     ViewData["Title"] = "Job Releases";
 }
 @Html.AntiForgeryToken()
@@ -22,36 +23,41 @@
     </div>
 </div>
 
-<div class="card">
-    <div class="card-header">
-        <div class="flex justify-between items-center">
-            <h5 class="card-title">Job Release History</h5>
-            <div class="text-sm text-gray-600 dark:text-gray-400">
-                <iconify-icon icon="lucide:info" class="mr-1"></iconify-icon>
-                <span class="hidden md:inline">Search by job ID, material numbers, release dates, or usernames</span>
-                <span class="md:hidden">Advanced search available</span>
+<!-- Add container wrapper with proper overflow handling -->
+<div class="table-container">
+    <div class="card">
+        <div class="card-header">
+            <div class="flex justify-between items-center">
+                <h5 class="card-title">Job Release History</h5>
+                <div class="text-sm text-gray-600 dark:text-gray-400">
+                    <iconify-icon icon="lucide:info" class="mr-1"></iconify-icon>
+                    <span class="hidden md:inline">Search by job ID, material numbers, release dates, or usernames</span>
+                    <span class="md:hidden">Advanced search available</span>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="card-body">
-        <table id="job-releases-table" class="table table-striped">
-            <thead>
-                <tr>
-                    <th>Job ID</th>
-                    <th>Planned Release Date</th>
-                    <th>Created By</th>
-                    <th>Material Count</th>
-                    <th>Total Pallets</th>
-                    <th>Total Items</th>
-                    <th>Job Status</th>
-                    @* <th>Completion %</th> *@
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- Populated via DataTables -->
-            </tbody>
-        </table>
+        <div class="card-body">
+            <!-- Add responsive wrapper -->
+            <div class="table-responsive">
+                <table id="job-releases-table" class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Job ID</th>
+                            <th>Planned Release Date</th>
+                            <th>Created By</th>
+                            <th>Material Count</th>
+                            <th>Total Pallets</th>
+                            <th>Total Items</th>
+                            <th>Job Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Populated via DataTables -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -78,6 +84,135 @@
 </div>
 
 <style>
+    /* Fix container width issues */
+    .table-container {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+    }
+
+    /* Table responsive wrapper */
+    .table-responsive {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Constrain table width */
+    #job-releases-table {
+        width: 100% !important;
+        max-width: 100%;
+        table-layout: auto;
+    }
+
+    /* Prevent DataTables from expanding beyond container */
+    .dataTables_wrapper {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: hidden;
+    }
+
+    .dataTables_scroll {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    .dataTables_scrollBody {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    /* Fix column widths */
+    #job-releases-table th,
+    #job-releases-table td {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+        /* Specific column width constraints */
+        #job-releases-table th:nth-child(1) {
+            width: 120px;
+            max-width: 120px;
+        }
+        /* Job ID */
+        #job-releases-table th:nth-child(2) {
+            width: 140px;
+            max-width: 140px;
+        }
+        /* Planned Release Date */
+        #job-releases-table th:nth-child(3) {
+            width: 150px;
+            max-width: 150px;
+        }
+        /* Created By */
+        #job-releases-table th:nth-child(4) {
+            width: 100px;
+            max-width: 100px;
+        }
+        /* Material Count */
+        #job-releases-table th:nth-child(5) {
+            width: 100px;
+            max-width: 100px;
+        }
+        /* Total Pallets */
+        #job-releases-table th:nth-child(6) {
+            width: 100px;
+            max-width: 100px;
+        }
+        /* Total Items */
+        #job-releases-table th:nth-child(7) {
+            width: 120px;
+            max-width: 120px;
+        }
+        /* Job Status */
+        #job-releases-table th:nth-child(8) {
+            width: 120px;
+            max-width: 120px;
+        }
+        /* Actions */
+
+        /* Apply same constraints to td elements */
+        #job-releases-table td:nth-child(1) {
+            width: 120px;
+            max-width: 120px;
+        }
+
+        #job-releases-table td:nth-child(2) {
+            width: 140px;
+            max-width: 140px;
+        }
+
+        #job-releases-table td:nth-child(3) {
+            width: 150px;
+            max-width: 150px;
+        }
+
+        #job-releases-table td:nth-child(4) {
+            width: 100px;
+            max-width: 100px;
+        }
+
+        #job-releases-table td:nth-child(5) {
+            width: 100px;
+            max-width: 100px;
+        }
+
+        #job-releases-table td:nth-child(6) {
+            width: 100px;
+            max-width: 100px;
+        }
+
+        #job-releases-table td:nth-child(7) {
+            width: 120px;
+            max-width: 120px;
+        }
+
+        #job-releases-table td:nth-child(8) {
+            width: 120px;
+            max-width: 120px;
+        }
+
     /* Progress bar styles */
     .progress {
         height: 20px;
@@ -136,6 +271,58 @@
         font-weight: 500;
     }
 
+    .status-due {
+        background-color: #fdf4ff;
+        color: #a21caf;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    /* Action buttons styling */
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+        line-height: 1.5;
+        border-radius: 0.2rem;
+        min-width: 32px;
+        height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .btn-danger {
+        background-color: #dc3545;
+        border-color: #dc3545;
+        color: white;
+    }
+
+        .btn-danger:hover {
+            background-color: #c82333;
+            border-color: #bd2130;
+        }
+
+    .btn-info {
+        background-color: #17a2b8;
+        border-color: #17a2b8;
+        color: white;
+    }
+
+        .btn-info:hover {
+            background-color: #138496;
+            border-color: #117a8b;
+        }
+
+    .flex {
+        display: flex;
+    }
+
+    .gap-1 {
+        gap: 0.25rem;
+    }
+
     /* Dark mode adjustments */
     .dark .status-scheduled {
         background-color: rgba(59, 130, 246, 0.2);
@@ -155,6 +342,11 @@
     .dark .status-overdue {
         background-color: rgba(239, 68, 68, 0.2);
         color: #fca5a5;
+    }
+
+    .dark .status-due {
+        background-color: rgba(162, 28, 175, 0.2);
+        color: #e879f9;
     }
 
     .dark .progress {
@@ -188,18 +380,26 @@
         color: #e5e7eb;
     }
 
-    .status-due {
-        background-color: #fdf4ff;
-        color: #a21caf;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 0.75rem;
-        font-weight: 500;
+    /* Mobile responsiveness */
+    @@media (max-width: 768px) {
+        .table-responsive
+
+    {
+        font-size: 0.875rem;
     }
 
-    .dark .status-due {
-        background-color: rgba(162, 28, 175, 0.2);
-        color: #e879f9;
+    .btn-sm {
+        padding: 0.125rem 0.25rem;
+        font-size: 0.75rem;
+        min-width: 28px;
+        height: 28px;
+    }
+
+    #job-releases-table th,
+    #job-releases-table td {
+        padding: 0.5rem 0.25rem;
+    }
+
     }
 </style>
 
@@ -219,6 +419,10 @@
             $('#job-releases-table').DataTable({
                 processing: true,
                 serverSide: true,
+                responsive: false, // Disable DataTables responsive as we handle it with CSS
+                scrollX: true, // Enable horizontal scrolling
+                scrollCollapse: true,
+                autoWidth: false, // Prevent auto width calculation
                 ajax: {
                     url: '/RawMaterial/GetPaginatedJobReleases',
                     type: 'POST',
@@ -230,6 +434,16 @@
                         return JSON.stringify(d);
                     }
                 },
+                columnDefs: [
+                    { width: "120px", targets: 0 }, // Job ID
+                    { width: "140px", targets: 1 }, // Planned Release Date
+                    { width: "150px", targets: 2 }, // Created By
+                    { width: "100px", targets: 3, className: "text-center" }, // Material Count
+                    { width: "100px", targets: 4, className: "text-center" }, // Total Pallets
+                    { width: "100px", targets: 5, className: "text-center" }, // Total Items
+                    { width: "120px", targets: 6 }, // Job Status
+                    { width: "120px", targets: 7, orderable: false, searchable: false } // Actions
+                ],
                 columns: [
                     {
                         data: 'jobId',
@@ -249,21 +463,13 @@
                     {
                         data: 'createdByFullName',
                         render: function(data, type, row) {
-                            return data || row.createdBy || '-';
+                            const displayName = data || row.createdBy || '-';
+                            return `<span title="${displayName}">${displayName}</span>`;
                         }
                     },
-                    {
-                        data: 'materialCount',
-                        className: 'text-center'
-                    },
-                    {
-                        data: 'totalPallets',
-                        className: 'text-center'
-                    },
-                    {
-                        data: 'totalItems',
-                        className: 'text-center'
-                    },
+                    { data: 'materialCount' },
+                    { data: 'totalPallets' },
+                    { data: 'totalItems' },
                     {
                         data: 'jobStatus',
                         render: function(data, type, row) {
@@ -271,30 +477,28 @@
                             return `<span class="${statusClass}">${data}</span>`;
                         }
                     },
-                    // {
-                    //     data: 'completionPercentage',
-                    //     render: function(data, type, row) {
-                    //         const percentage = Math.round(data);
-                    //         return `
-                    //             <div class="progress">
-                    //                 <div class="progress-bar" style="width: ${percentage}%">
-                    //                     ${percentage}%
-                    //                 </div>
-                    //             </div>
-                    //         `;
-                    //     }
-                    // },
                     {
                         data: null,
-                        orderable: false,
-                        searchable: false,
                         render: function(data, type, row) {
-                            return `
-                                <button class="btn btn-sm btn-primary" onclick="viewJobReleaseDetails('${row.jobId}')">
-                                    <iconify-icon icon="lucide:eye"></iconify-icon>
-                                    Details
-                                </button>
-                            `;
+                            const shortId = row.jobId.substring(0, 8).toUpperCase();
+                            let buttons = `
+                                <div class="flex gap-1">
+                                    <button onclick="viewJobReleaseDetails('${row.jobId}')"
+                                            class="btn btn-sm btn-info" title="View Details">
+                                        <iconify-icon icon="lucide:eye"></iconify-icon>
+                                    </button>`;
+
+                            // Only show delete button if user has delete access
+                            if (row.hasDeleteAccess) {
+                                buttons += `
+                                    <button onclick="deleteJobReleases('${row.jobId}', '${shortId}')"
+                                            class="btn btn-sm btn-danger" title="Delete Job">
+                                        <iconify-icon icon="lucide:trash-2"></iconify-icon>
+                                    </button>`;
+                            }
+
+                            buttons += `</div>`;
+                            return buttons;
                         }
                     }
                 ],
@@ -320,11 +524,14 @@
                         $('.dataTables_length select').addClass('bg-gray-700 border-gray-600 text-white');
                         $(this).closest('.dataTables_wrapper').addClass('dark-mode-table');
                     }
+
+                    // Fix any width issues after initialization
+                    $(window).trigger('resize');
                 }
             });
         }
 
-                function getJobStatusClass(status) {
+        function getJobStatusClass(status) {
             switch (status.toLowerCase()) {
                 case 'scheduled':
                     return 'status-scheduled';
@@ -334,7 +541,7 @@
                     return 'status-completed';
                 case 'overdue':
                     return 'status-overdue';
-                case 'due for release': 
+                case 'due for release':
                     return 'status-due';
                 default:
                     return 'status-scheduled';
@@ -353,5 +560,72 @@
                 sessionStorage.removeItem("jobReleaseSuccessMessage");
             }
         });
+
+        function deleteJobReleases(jobId, jobIdShort) {
+            Swal.fire({
+                title: 'Delete Job Releases?',
+                html: `Are you sure you want to delete all releases for Job <strong>${jobIdShort}</strong>?<br><br>
+                       <span class="text-warning">This will delete all releases and release details in this job.</span>`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Yes, Delete Job',
+                cancelButtonText: 'Cancel',
+                reverseButtons: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Show loading state
+                    Swal.fire({
+                        title: 'Deleting...',
+                        text: 'Please wait while we delete the job releases.',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                        showConfirmButton: false,
+                        willOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+
+                    // Make the delete request
+                    $.post('/RawMaterial/DeleteJobReleases', {
+                        jobId: jobId,
+                        __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                    })
+                    .done(function(response) {
+                        if (response.success) {
+                            Swal.fire({
+                                title: 'Deleted!',
+                                text: response.message,
+                                icon: 'success',
+                                timer: 3000,
+                                showConfirmButton: false
+                            });
+
+                            // Refresh the DataTable
+                            if ($.fn.DataTable.isDataTable('#job-releases-table')) {
+                                $('#job-releases-table').DataTable().ajax.reload();
+                            }
+                        } else {
+                            Swal.fire({
+                                title: 'Delete Failed',
+                                text: response.message,
+                                icon: 'error',
+                                confirmButtonText: 'OK'
+                            });
+                        }
+                    })
+                    .fail(function(xhr, status, error) {
+                        Swal.fire({
+                            title: 'Error',
+                            text: 'An error occurred while deleting the job releases. Please try again.',
+                            icon: 'error',
+                            confirmButtonText: 'OK'
+                        });
+                        console.error('Delete job releases error:', error);
+                    });
+                }
+            });
+        }
     </script>
 }

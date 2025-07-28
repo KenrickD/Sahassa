@@ -1768,5 +1768,117 @@ namespace WMS.WebApp.Controllers
             }
         }
         #endregion
+        #region job release delete
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteReleaseDetail(Guid releaseDetailId)
+        {
+            // Check permissions
+            if (!_currentUserService.HasPermission(AppConsts.Permissions.RAW_MATERIAL_DELETE))
+            {
+                _logger.LogWarning("User {UserId} denied access to delete release detail - insufficient permissions",
+                    _currentUserService.UserId);
+                return Json(new { success = false, message = "You don't have permission to delete release details." });
+            }
+
+            try
+            {
+                var result = await _rawMaterialService.DeleteReleaseDetailAsync(releaseDetailId, _currentUserService.UserId);
+
+                if (result.Success)
+                {
+                    _logger.LogInformation("ReleaseDetail {ReleaseDetailId} deleted successfully by user {UserId}",
+                        releaseDetailId, _currentUserService.UserId);
+                    return Json(new { success = true, message = result.ErrorMessage });
+                }
+                else
+                {
+                    _logger.LogWarning("Failed to delete ReleaseDetail {ReleaseDetailId}: {Error}",
+                        releaseDetailId, result.ErrorMessage);
+                    return Json(new { success = false, message = result.ErrorMessage });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting ReleaseDetail {ReleaseDetailId} by user {UserId}",
+                    releaseDetailId, _currentUserService.UserId);
+                return Json(new { success = false, message = "An unexpected error occurred while deleting the release detail." });
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteRelease(Guid releaseId)
+        {
+            // Check permissions
+            if (!_currentUserService.HasPermission(AppConsts.Permissions.RAW_MATERIAL_DELETE))
+            {
+                _logger.LogWarning("User {UserId} denied access to delete release - insufficient permissions",
+                    _currentUserService.UserId);
+                return Json(new { success = false, message = "You don't have permission to delete releases." });
+            }
+
+            try
+            {
+                var result = await _rawMaterialService.DeleteReleaseAsync(releaseId, _currentUserService.UserId);
+
+                if (result.Success)
+                {
+                    _logger.LogInformation("Release {ReleaseId} deleted successfully by user {UserId}",
+                        releaseId, _currentUserService.UserId);
+                    return Json(new { success = true, message = result.ErrorMessage });
+                }
+                else
+                {
+                    _logger.LogWarning("Failed to delete Release {ReleaseId}: {Error}",
+                        releaseId, result.ErrorMessage);
+                    return Json(new { success = false, message = result.ErrorMessage });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting Release {ReleaseId} by user {UserId}",
+                    releaseId, _currentUserService.UserId);
+                return Json(new { success = false, message = "An unexpected error occurred while deleting the release." });
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteJobReleases(Guid jobId)
+        {
+            // Check permissions
+            if (!_currentUserService.HasPermission(AppConsts.Permissions.RAW_MATERIAL_DELETE))
+            {
+                _logger.LogWarning("User {UserId} denied access to delete job releases - insufficient permissions",
+                    _currentUserService.UserId);
+                return Json(new { success = false, message = "You don't have permission to delete job releases." });
+            }
+
+            try
+            {
+                var result = await _rawMaterialService.DeleteJobReleasesAsync(jobId, _currentUserService.UserId);
+
+                if (result.Success)
+                {
+                    _logger.LogInformation("Job releases for Job {JobId} deleted successfully by user {UserId}",
+                        jobId, _currentUserService.UserId);
+                    return Json(new { success = true, message = result.ErrorMessage });
+                }
+                else
+                {
+                    _logger.LogWarning("Failed to delete Job releases for Job {JobId}: {Error}",
+                        jobId, result.ErrorMessage);
+                    return Json(new { success = false, message = result.ErrorMessage });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting Job releases for Job {JobId} by user {UserId}",
+                    jobId, _currentUserService.UserId);
+                return Json(new { success = false, message = "An unexpected error occurred while deleting the job releases." });
+            }
+        }
+        #endregion
     }
 }

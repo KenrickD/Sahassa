@@ -45,6 +45,7 @@
                     data: null,
                     render: data => `${data.balancePallet} / ${data.totalPallet}`
                 },
+                {data : 'po'},
                 {
                     data: 'id',
                     render: id =>

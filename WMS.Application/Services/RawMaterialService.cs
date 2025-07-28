@@ -1231,7 +1231,15 @@ namespace WMS.Application.Services
                         .ThenInclude(r => r.RM_ReceivePallets)
                             .ThenInclude(p => p.RM_ReceivePalletItems)
                     .Where(rm => !rm.IsDeleted);
-
+                query = query.Where(rm =>
+                    rm.RM_Receive
+                        .SelectMany(r => r.RM_ReceivePallets)
+                        .SelectMany(p => p.RM_ReceivePalletItems)
+                        .Any(i => !i.IsReleased) || // Has unreleased items (balance qty > 0)
+                    rm.RM_Receive
+                        .SelectMany(r => r.RM_ReceivePallets)
+                        .Any(p => p.RM_ReceivePalletItems.Any(i => !i.IsReleased)) // Has pallets with unreleased items (balance pallets > 0)
+                );
                 if (!string.IsNullOrWhiteSpace(searchTerm))
                 {
                     searchTerm = searchTerm.ToLower();
@@ -1302,7 +1310,11 @@ namespace WMS.Application.Services
                     .Include(r => r.RM_ReceivePallets)
                         .ThenInclude(p => p.RM_ReceivePalletItems)
                     .Where(r => !r.IsDeleted);
-
+                query = query.Where(r =>
+                    r.RM_ReceivePallets
+                        .SelectMany(p => p.RM_ReceivePalletItems)
+                        .Any(i => !i.IsReleased)
+                );
                 if (!string.IsNullOrWhiteSpace(searchTerm))
                 {
                     searchTerm = searchTerm.ToLower();
@@ -1325,7 +1337,7 @@ namespace WMS.Application.Services
                 {
                     foreach (var pallet in receive.RM_ReceivePallets)
                     {
-                        foreach (var item in pallet.RM_ReceivePalletItems)
+                        foreach (var item in pallet.RM_ReceivePalletItems.Where(i => !i.IsReleased))
                         {
                             allItems.Add(new RawMaterialBatchDto
                             {
@@ -2743,7 +2755,9 @@ namespace WMS.Application.Services
                     .Include(r => r.RM_ReceivePallets)
                         .ThenInclude(p => p.RM_ReceivePalletItems)
                     .Where(r => !r.IsDeleted);
-
+                query = query.Where(r =>
+                    r.RM_ReceivePallets.Any(p => p.RM_ReceivePalletItems.Any(i => !i.IsReleased))
+                );
                 // Apply search if provided
                 if (!string.IsNullOrWhiteSpace(searchTerm))
                 {
@@ -2766,9 +2780,10 @@ namespace WMS.Application.Services
                 var allPallets = new List<RawMaterialPalletDto>();
                 foreach (var receive in allMatches)
                 {
-                    foreach (var pallet in receive.RM_ReceivePallets)
+                    foreach (var pallet in receive.RM_ReceivePallets.Where(p => p.RM_ReceivePalletItems.Any(i => !i.IsReleased)))
                     {
-                        var itemCodes = pallet.RM_ReceivePalletItems.Select(i => i.ItemCode).ToList();
+                        var unreleasedItems = pallet.RM_ReceivePalletItems.Where(i => !i.IsReleased).ToList();
+                        var itemCodes = unreleasedItems.Select(i => i.ItemCode).ToList();
 
                         allPallets.Add(new RawMaterialPalletDto
                         {
@@ -2779,7 +2794,7 @@ namespace WMS.Application.Services
                             MaterialNo = receive.RawMaterial.MaterialNo,
                             Description = receive.RawMaterial.Description ?? "N/A",
                             ReceivedDate = receive.ReceivedDate,
-                            ItemCount = itemCodes.Count,
+                            ItemCount = unreleasedItems.Count,
                             AllItemCodes = string.Join(", ", itemCodes), // Keep all codes for reference/tooltip
                             RawMaterialId = receive.RawMaterialId,
 
@@ -3347,7 +3362,8 @@ namespace WMS.Application.Services
                     BatchNo = d.GIV_RM_Receive?.BatchNo ?? "",
                     LocationCode = d.GIV_RM_ReceivePallet?.Location?.Barcode,
                     ReceivedDate = d.GIV_RM_Receive?.ReceivedDate ?? DateTime.MinValue,
-                    PackSize = d.GIV_RM_ReceivePallet?.PackSize ?? 0
+                    PackSize = d.GIV_RM_ReceivePallet?.PackSize ?? 0,
+                    HasDeleteAccess = _currentUserService.HasPermission(AppConsts.Permissions.RAW_MATERIAL_DELETE)
                 };
 
                 detailDtos.Add(dto);
@@ -3494,7 +3510,8 @@ namespace WMS.Application.Services
                     TotalPallets = totalPallets,
                     TotalItems = totalItems,
                     JobStatus = jobStatus,
-                    CompletionPercentage = Math.Round(completionPercentage, 1)
+                    CompletionPercentage = Math.Round(completionPercentage, 1),
+                    HasDeleteAccess = _currentUserService.HasPermission(AppConsts.Permissions.RAW_MATERIAL_DELETE)
                 };
 
                 jobReleaseDtos.Add(dto);
@@ -3653,7 +3670,8 @@ namespace WMS.Application.Services
                     StatusClass = GetReleaseStatusClass(status),
                     PalletCount = palletCount,
                     ItemCount = itemCount,
-                    IsCompleted = release.ActualReleaseDate.HasValue
+                    IsCompleted = release.ActualReleaseDate.HasValue,
+                    HasDeleteAccess = _currentUserService.HasPermission(AppConsts.Permissions.RAW_MATERIAL_DELETE)
                 };
 
                 individualReleaseDtos.Add(dto);
@@ -3927,10 +3945,16 @@ namespace WMS.Application.Services
 
                     if (!hasAvailableItems) continue;
 
+                    // Get batch number from the first available item instead of receive (Req by sooshin 25/07/2025)
+                    var firstAvailableItem = receive.RM_ReceivePallets
+                        .SelectMany(p => p.RM_ReceivePalletItems)
+                        .Where(i => !i.IsReleased)
+                        .FirstOrDefault();
+
                     var receiveDto = new JobReleaseReceiveDto
                     {
                         Id = receive.Id,
-                        BatchNo = receive.BatchNo,
+                        BatchNo = firstAvailableItem?.BatchNo,
                         ReceivedDate = receive.ReceivedDate,
                         ReceivedBy = receive.ReceivedBy
                     };
@@ -4626,7 +4650,325 @@ namespace WMS.Application.Services
         #endregion
 
         #region Job Release Delete
+        public async Task<ServiceWebResult> DeleteReleaseDetailAsync(Guid releaseDetailId, string userId)
+        {
+            _logger.LogInformation("Starting delete operation for ReleaseDetail {ReleaseDetailId} by user {UserId}",
+                releaseDetailId, userId);
 
+            using var transaction = await _dbContext.Database.BeginTransactionAsync();
+            try
+            {
+                // Get release detail with row-level locking and include related entities
+                var releaseDetail = await _dbContext.GIV_RM_ReleaseDetails
+                    .Include(rd => rd.GIV_RM_ReceivePallet)
+                    .Include(rd => rd.GIV_RM_ReceivePalletItem)
+                    .Include(rd => rd.GIV_RM_Release)
+                        .ThenInclude(r => r.GIV_RawMaterial)
+                    .Where(rd => rd.Id == releaseDetailId && !rd.IsDeleted)
+                    .FirstOrDefaultAsync();
+
+                if (releaseDetail == null)
+                {
+                    _logger.LogWarning("ReleaseDetail {ReleaseDetailId} not found or already deleted", releaseDetailId);
+                    return new ServiceWebResult
+                    {
+                        Success = false,
+                        ErrorMessage = "Release detail not found or already deleted."
+                    };
+                }
+
+                // Validate deletion criteria with AND logic
+                var validationResult = await ValidateReleaseDetailDeletionAsync(releaseDetail);
+                if (!validationResult.Success)
+                {
+                    _logger.LogWarning("ReleaseDetail {ReleaseDetailId} deletion validation failed: {Error}",
+                        releaseDetailId, validationResult.ErrorMessage);
+                    return validationResult;
+                }
+
+                // Perform soft delete
+                releaseDetail.IsDeleted = true;
+                releaseDetail.ModifiedBy = userId;
+                releaseDetail.ModifiedAt = DateTime.UtcNow;
+
+                await _dbContext.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                _logger.LogInformation("Successfully deleted ReleaseDetail {ReleaseDetailId} by user {UserId}",
+                    releaseDetailId, userId);
+
+                return new ServiceWebResult
+                {
+                    Success = true,
+                    ErrorMessage = $"Release detail for {GetReleaseDetailDisplayName(releaseDetail)} deleted successfully."
+                };
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Error deleting ReleaseDetail {ReleaseDetailId} by user {UserId}",
+                    releaseDetailId, userId);
+                return new ServiceWebResult
+                {
+                    Success = false,
+                    ErrorMessage = "An error occurred while deleting the release detail."
+                };
+            }
+        }
+
+        public async Task<ServiceWebResult> DeleteReleaseAsync(Guid releaseId, string userId)
+        {
+            _logger.LogInformation("Starting delete operation for Release {ReleaseId} by user {UserId}",
+                releaseId, userId);
+
+            using var transaction = await _dbContext.Database.BeginTransactionAsync();
+            try
+            {
+                // Get release with all related data and row-level locking
+                var release = await _dbContext.GIV_RM_Releases
+                    .Include(r => r.GIV_RawMaterial)
+                    .Include(r => r.GIV_RM_ReleaseDetails.Where(rd => !rd.IsDeleted))
+                        .ThenInclude(rd => rd.GIV_RM_ReceivePallet)
+                    .Include(r => r.GIV_RM_ReleaseDetails.Where(rd => !rd.IsDeleted))
+                        .ThenInclude(rd => rd.GIV_RM_ReceivePalletItem)
+                    .Where(r => r.Id == releaseId && !r.IsDeleted)
+                    .FirstOrDefaultAsync();
+
+                if (release == null)
+                {
+                    _logger.LogWarning("Release {ReleaseId} not found or already deleted", releaseId);
+                    return new ServiceWebResult
+                    {
+                        Success = false,
+                        ErrorMessage = "Release not found or already deleted."
+                    };
+                }
+
+                // Validate deletion criteria for the release and all its details
+                var validationResult = await ValidateReleaseDeletionAsync(release);
+                if (!validationResult.Success)
+                {
+                    _logger.LogWarning("Release {ReleaseId} deletion validation failed: {Error}",
+                        releaseId, validationResult.ErrorMessage);
+                    return validationResult;
+                }
+
+                // Perform soft delete on release and all its details
+                release.IsDeleted = true;
+                release.ModifiedBy = userId;
+                release.ModifiedAt = DateTime.UtcNow;
+
+                foreach (var detail in release.GIV_RM_ReleaseDetails)
+                {
+                    detail.IsDeleted = true;
+                    detail.ModifiedBy = userId;
+                    detail.ModifiedAt = DateTime.UtcNow;
+                }
+
+                await _dbContext.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                _logger.LogInformation("Successfully deleted Release {ReleaseId} with {DetailCount} details by user {UserId}",
+                    releaseId, release.GIV_RM_ReleaseDetails.Count, userId);
+
+                return new ServiceWebResult
+                {
+                    Success = true,
+                    ErrorMessage = $"Release for {release.GIV_RawMaterial.MaterialNo} deleted successfully with {release.GIV_RM_ReleaseDetails.Count} details."
+                };
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Error deleting Release {ReleaseId} by user {UserId}", releaseId, userId);
+                return new ServiceWebResult
+                {
+                    Success = false,
+                    ErrorMessage = "An error occurred while deleting the release."
+                };
+            }
+        }
+
+        public async Task<ServiceWebResult> DeleteJobReleasesAsync(Guid jobId, string userId)
+        {
+            _logger.LogInformation("Starting delete operation for Job {JobId} by user {UserId}", jobId, userId);
+
+            using var transaction = await _dbContext.Database.BeginTransactionAsync();
+            try
+            {
+                // Get all releases in the job with related data and row-level locking
+                var releases = await _dbContext.GIV_RM_Releases
+                    .Include(r => r.GIV_RawMaterial)
+                    .Include(r => r.GIV_RM_ReleaseDetails.Where(rd => !rd.IsDeleted))
+                        .ThenInclude(rd => rd.GIV_RM_ReceivePallet)
+                    .Include(r => r.GIV_RM_ReleaseDetails.Where(rd => !rd.IsDeleted))
+                        .ThenInclude(rd => rd.GIV_RM_ReceivePalletItem)
+                    .Where(r => r.JobId == jobId && !r.IsDeleted)
+                    .ToListAsync();
+
+                if (!releases.Any())
+                {
+                    _logger.LogWarning("No releases found for Job {JobId}", jobId);
+                    return new ServiceWebResult
+                    {
+                        Success = false,
+                        ErrorMessage = "Job not found or no releases to delete."
+                    };
+                }
+
+                // Validate deletion criteria for all releases in the job
+                var validationResult = await ValidateJobDeletionAsync(releases);
+                if (!validationResult.Success)
+                {
+                    _logger.LogWarning("Job {JobId} deletion validation failed: {Error}", jobId, validationResult.ErrorMessage);
+                    return validationResult;
+                }
+
+                // Perform soft delete on all releases and their details
+                var totalDetails = 0;
+                foreach (var release in releases)
+                {
+                    release.IsDeleted = true;
+                    release.ModifiedBy = userId;
+                    release.ModifiedAt = DateTime.UtcNow;
+
+                    foreach (var detail in release.GIV_RM_ReleaseDetails)
+                    {
+                        detail.IsDeleted = true;
+                        detail.ModifiedBy = userId;
+                        detail.ModifiedAt = DateTime.UtcNow;
+                        totalDetails++;
+                    }
+                }
+
+                await _dbContext.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                _logger.LogInformation("Successfully deleted Job {JobId} with {ReleaseCount} releases and {DetailCount} details by user {UserId}",
+                    jobId, releases.Count, totalDetails, userId);
+
+                return new ServiceWebResult
+                {
+                    Success = true,
+                    ErrorMessage = $"Job deleted successfully. Removed {releases.Count} releases with {totalDetails} details."
+                };
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Error deleting Job {JobId} by user {UserId}", jobId, userId);
+                return new ServiceWebResult
+                {
+                    Success = false,
+                    ErrorMessage = "An error occurred while deleting the job releases."
+                };
+            }
+        }
+
+        #endregion
+
+        #region Private Validation Methods
+
+        private async Task<ServiceWebResult> ValidateReleaseDetailDeletionAsync(GIV_RM_ReleaseDetails releaseDetail)
+        {
+            // Check if ActualReleaseDate is null (AND condition 1)
+            if (releaseDetail.ActualReleaseDate.HasValue)
+            {
+                return new ServiceWebResult
+                {
+                    Success = false,
+                    ErrorMessage = $"Cannot delete {GetReleaseDetailDisplayName(releaseDetail)} - it has already been actually released on {releaseDetail.ActualReleaseDate.Value:yyyy-MM-dd HH:mm}."
+                };
+            }
+
+            // Check pallet/item IsReleased status (AND condition 2)
+            if (releaseDetail.IsEntirePallet)
+            {
+                // For entire pallet releases, check pallet IsReleased status
+                if (releaseDetail.GIV_RM_ReceivePallet?.IsReleased == true)
+                {
+                    return new ServiceWebResult
+                    {
+                        Success = false,
+                        ErrorMessage = $"Cannot delete pallet release - Pallet {releaseDetail.GIV_RM_ReceivePallet.PalletCode} is already marked as released."
+                    };
+                }
+            }
+            else
+            {
+                // For individual item releases, check item IsReleased status
+                if (releaseDetail.GIV_RM_ReceivePalletItem?.IsReleased == true)
+                {
+                    return new ServiceWebResult
+                    {
+                        Success = false,
+                        ErrorMessage = $"Cannot delete item release - Item {releaseDetail.GIV_RM_ReceivePalletItem.ItemCode} is already marked as released."
+                    };
+                }
+            }
+
+            return new ServiceWebResult { Success = true };
+        }
+
+        private async Task<ServiceWebResult> ValidateReleaseDeletionAsync(GIV_RM_Release release)
+        {
+            // Check if the release itself has ActualReleaseDate
+            if (release.ActualReleaseDate.HasValue)
+            {
+                return new ServiceWebResult
+                {
+                    Success = false,
+                    ErrorMessage = $"Cannot delete release - Release for {release.GIV_RawMaterial.MaterialNo} was actually released on {release.ActualReleaseDate.Value:yyyy-MM-dd HH:mm}."
+                };
+            }
+
+            // Validate all release details using the same criteria
+            foreach (var detail in release.GIV_RM_ReleaseDetails)
+            {
+                var detailValidation = await ValidateReleaseDetailDeletionAsync(detail);
+                if (!detailValidation.Success)
+                {
+                    return new ServiceWebResult
+                    {
+                        Success = false,
+                        ErrorMessage = $"Cannot delete release - {detailValidation.ErrorMessage}"
+                    };
+                }
+            }
+
+            return new ServiceWebResult { Success = true };
+        }
+
+        private async Task<ServiceWebResult> ValidateJobDeletionAsync(List<GIV_RM_Release> releases)
+        {
+            // Validate all releases in the job
+            foreach (var release in releases)
+            {
+                var releaseValidation = await ValidateReleaseDeletionAsync(release);
+                if (!releaseValidation.Success)
+                {
+                    return new ServiceWebResult
+                    {
+                        Success = false,
+                        ErrorMessage = $"Cannot delete job - {releaseValidation.ErrorMessage}"
+                    };
+                }
+            }
+
+            return new ServiceWebResult { Success = true };
+        }
+
+        private string GetReleaseDetailDisplayName(GIV_RM_ReleaseDetails releaseDetail)
+        {
+            if (releaseDetail.IsEntirePallet)
+            {
+                return $"pallet {releaseDetail.GIV_RM_ReceivePallet?.PalletCode ?? "Unknown"}";
+            }
+            else
+            {
+                return $"item {releaseDetail.GIV_RM_ReceivePalletItem?.ItemCode ?? "Unknown"}";
+            }
+        }
         #endregion
 
         #endregion

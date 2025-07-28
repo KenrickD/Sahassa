@@ -109,5 +109,8 @@ namespace WMS.Application.Interfaces
         Task<Dictionary<Guid, FinishedGoodConflictResponse>> GetBatchFinishedGoodReleaseConflictsAsync(List<Guid> finishedGoodIds);
         Task<ServiceWebResult> CreateJobReleaseAsync(JobReleaseCreateDto dto, string userId);
         Task<FGServiceWebResult> ValidateJobReleaseConflictsAsync(JobReleaseCreateDto dto);
+        Task<ServiceWebResult> DeleteReleaseDetailAsync(Guid releaseDetailId, string userId);
+        Task<ServiceWebResult> DeleteReleaseAsync(Guid releaseId, string userId);
+        Task<ServiceWebResult> DeleteJobReleasesAsync(Guid jobId, string userId);
     }
 }
