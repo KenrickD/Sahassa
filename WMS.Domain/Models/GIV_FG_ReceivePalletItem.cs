@@ -13,11 +13,14 @@ namespace WMS.Domain.Models
     {
         public Guid GIV_FG_ReceivePalletId { get; set; }
         public virtual GIV_FG_ReceivePallet GIV_FG_ReceivePallet { get; set; } = default!;
+        public Guid? FinishedGoodId { get; set; }
+        public virtual GIV_FinishedGood FinishedGood { get; set; } = default!;
+
         [MaxLength(100)]
         public string ItemCode { get; set; } = default!;
         public string? BatchNo { get; set; }
         public DateTime? ProdDate{ get; set; }
         public bool IsReleased { get; set; } = false;
-        public string? Remarks { get; set; } 
+        public string? Remarks { get; set; }
     }
 }

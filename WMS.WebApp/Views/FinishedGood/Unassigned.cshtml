@@ -7,7 +7,16 @@
 <div class="container mt-4">
     <div class="row mb-3">
         <div class="col text-center">
-            <h3>Assign Pallets to SKU</h3>
+            <h3>Assign Items to SKU</h3>
+        </div>
+    </div>
+
+    <!-- Unassigned Pallets Counter -->
+    <div class="row mb-3">
+        <div class="col text-center">
+            <div class="alert alert-info">
+                <strong>@Model.UnassignedGroups.Sum(g => g.Pallets.Count)</strong> unassigned pallets remaining
+            </div>
         </div>
     </div>
 
@@ -172,7 +181,7 @@
             body: JSON.stringify({
                 skuId: selectedSkuId,
                 palletIds: assignedPalletIds,
-                unassignedReceiveIds: unassignedReceiveIds 
+                unassignedReceiveIds: unassignedReceiveIds
             })
         })
         .then(async response => {
@@ -233,7 +242,7 @@
             group.pallets.forEach(pallet => {
         const div = document.createElement('div');
         div.className = 'pallet-item';
-        div.setAttribute('data-id', pallet.id || pallet.Id); 
+        div.setAttribute('data-id', pallet.id || pallet.Id);
         div.setAttribute('data-receive-id', group.receiveId || group.ReceiveId);
         div.textContent = pallet.palletCode || pallet.PalletCode;
         palletBox.appendChild(div);
@@ -274,4 +283,3 @@
         document.querySelector('#receivesTable tbody').innerHTML = '';
     }
 </script>
-

@@ -3,6 +3,8 @@ let selectedMaterials = new Set();
 let availableMaterials = [];
 let jobReleaseConfig = {};
 let globalConflictData = {};
+let isSubmitting = false;
+let submissionRequestId = null;
 $(document).ready(function () {
     initializeCreateJobRelease();
 });
@@ -34,11 +36,40 @@ function setupEventListeners() {
     // Global settings
     document.getElementById('apply-global-settings').addEventListener('click', applyGlobalSettings);
 
-    // Submit
-    document.getElementById('submit-job-release').addEventListener('click', submitJobRelease);
+    // Submit with additional protection
+    const submitButton = document.getElementById('submit-job-release');
+
+    // Remove any existing event listeners to prevent stacking
+    submitButton.replaceWith(submitButton.cloneNode(true));
+    document.getElementById('submit-job-release').addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        submitJobRelease();
+    });
 
     // Set up Step 2 event listeners (using event delegation)
     setupStep2EventListeners();
+
+    // Prevent double submission via Enter key
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && !e.target.matches('textarea, input[type="text"], input[type="search"]')) {
+            e.preventDefault();
+
+            // Only submit if we're on step 3 and not already submitting
+            if (getCurrentStep() === 3 && !isSubmitting) {
+                submitJobRelease();
+            }
+        }
+    });
+
+    // Prevent form submission if user tries to refresh/navigate away during submission
+    window.addEventListener('beforeunload', function (e) {
+        if (isSubmitting) {
+            const message = 'Job release submission is in progress. Are you sure you want to leave?';
+            e.returnValue = message;
+            return message;
+        }
+    });
 }
 
 function loadAvailableMaterials() {
@@ -1046,6 +1077,23 @@ function submitJobRelease() {
     const submitButton = document.getElementById('submit-job-release');
     const originalText = submitButton.innerHTML;
 
+    // IMMEDIATE race condition check - before any async operations
+    if (isSubmitting) {
+        console.log('⚠️ Submit already in progress, ignoring duplicate click');
+        toastr.warning('Submission already in progress. Please wait...');
+        return; // Exit immediately if already submitting
+    }
+
+    // IMMEDIATE button disable and state change
+    isSubmitting = true;
+    submitButton.disabled = true;
+    submitButton.innerHTML = '<iconify-icon icon="mdi:loading" class="animate-spin"></iconify-icon> Processing...';
+    submitButton.classList.add('opacity-50', 'cursor-not-allowed');
+
+    // Generate unique request ID for server-side deduplication
+    submissionRequestId = generateRequestId();
+    console.log('🚀 Starting job release submission with RequestId:', submissionRequestId);
+
     // Collect and validate job release data
     const jobReleaseData = collectJobReleaseData();
 
@@ -1059,67 +1107,163 @@ function submitJobRelease() {
 
         toastr.error('Validation failed. Please check the review section.');
         alert(warningMessage);
+
+        // Reset submission state on validation failure
+        resetSubmissionState(submitButton, originalText);
         return;
     }
-
-    // Show loading state
-    submitButton.innerHTML = '<iconify-icon icon="mdi:loading" class="animate-spin"></iconify-icon> Creating Job Release...';
-    submitButton.disabled = true;
 
     // Add global job remarks
     jobReleaseData.jobRemarks = window.globalJobRemarks || '';
 
-    // Prepare submission payload
+    // Prepare submission payload with request ID
     const payload = {
         materials: jobReleaseData.materials,
-        jobRemarks: jobReleaseData.jobRemarks
+        jobRemarks: jobReleaseData.jobRemarks,
+        requestId: submissionRequestId // For server-side deduplication
     };
 
-    console.log('Submitting job release:', payload);
+    console.log('📤 Submitting job release payload:', payload);
 
-    // Submit to backend
+    // Create abort controller for timeout handling
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+        controller.abort();
+        console.log('⏰ Request timed out after 30 seconds');
+    }, 30000); // 30 second timeout
+
+    // Submit to backend with enhanced safety measures
     fetch('/RawMaterial/SubmitJobRelease', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': $('input[name="__RequestVerificationToken"]').val(),
-            'X-Requested-With': 'XMLHttpRequest'
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-Request-ID': submissionRequestId, // Server-side deduplication header
+            'X-Submission-Timestamp': Date.now().toString() // Additional tracking
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: controller.signal // For timeout handling
     })
         .then(function (response) {
+            clearTimeout(timeoutId);
+            console.log('📡 Received response:', response.status, response.statusText);
+
             if (!response.ok) {
                 return response.json().then(function (data) {
+                    console.log('❌ Server returned error:', data);
                     return Promise.reject(data);
+                }).catch(function () {
+                    // If response isn't JSON, create error object
+                    return Promise.reject({
+                        message: `Server error: ${response.status} ${response.statusText}`
+                    });
                 });
             }
             return response.json();
         })
         .then(function (data) {
+            console.log('✅ Job release response:', data);
+
             if (data.success) {
                 toastr.success('Job release created successfully!');
-                sessionStorage.setItem('jobReleaseSuccessMessage', 'Job release created successfully! Total: ' +
-                    jobReleaseData.materialCount + ' materials, ' +
-                    jobReleaseData.totalPallets + ' pallets, ' +
-                    jobReleaseData.totalItems + ' items.');
+
+                // Store success message for next page
+                const successMessage = `Job release created successfully! Total: ${jobReleaseData.materialCount} materials, ${jobReleaseData.totalPallets} pallets, ${jobReleaseData.totalItems} items.`;
+                sessionStorage.setItem('jobReleaseSuccessMessage', successMessage);
+
+                console.log('🎉 Success! Redirecting to job releases page...');
 
                 // Small delay to show success message before redirect
                 setTimeout(function () {
                     window.location.href = '/RawMaterial/JobReleases';
-                }, 1000);
+                }, 1500);
             } else {
                 throw new Error(data.message || 'Failed to create job release');
             }
         })
         .catch(function (error) {
-            console.error('Error submitting job release:', error);
-            toastr.error(error.message || 'Failed to create job release');
+            clearTimeout(timeoutId);
+            console.error('💥 Error submitting job release:', error);
 
-            // Reset button
-            submitButton.innerHTML = originalText;
-            submitButton.disabled = false;
+            let errorMessage = 'Failed to create job release';
+
+            if (error.name === 'AbortError') {
+                errorMessage = 'Request timed out. Please check your connection and try again.';
+                console.log('⏰ Request was aborted due to timeout');
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+
+            toastr.error(errorMessage);
+
+            // Reset submission state on error
+            resetSubmissionState(submitButton, originalText);
         });
 }
+
+function resetSubmissionState(button, originalText) {
+    console.log('🔄 Resetting submission state');
+
+    isSubmitting = false;
+    submissionRequestId = null;
+    button.disabled = false;
+    button.innerHTML = originalText;
+    button.classList.remove('opacity-50', 'cursor-not-allowed');
+}
+
+// Helper function to generate unique request ID
+function generateRequestId() {
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substr(2, 9);
+    const userId = window.currentUserId || 'unknown'; // If you have user ID available
+    return `jobrelease_${userId}_${timestamp}_${random}`;
+}
+
+
+
+// Helper function to get current step
+function getCurrentStep() {
+    if (document.getElementById('step-1').style.display !== 'none') return 1;
+    if (document.getElementById('step-2').style.display !== 'none') return 2;
+    if (document.getElementById('step-3').style.display !== 'none') return 3;
+    return 1;
+}
+
+// Enhanced page visibility handling (prevents issues with browser tab switching)
+document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible' && isSubmitting) {
+        console.log('👁️ Page became visible during submission - checking status...');
+
+        // Optional: Add logic to check if submission completed while tab was hidden
+        // This could involve polling the server or checking sessionStorage
+    }
+});
+
+// Network connection handling
+window.addEventListener('online', function () {
+    console.log('🌐 Network connection restored');
+    if (isSubmitting) {
+        console.log('⚠️ Submission was in progress when network was restored');
+        // Could add logic to retry or check status
+    }
+});
+
+window.addEventListener('offline', function () {
+    console.log('📴 Network connection lost');
+    if (isSubmitting) {
+        toastr.warning('Network connection lost during submission. Please check your connection.');
+    }
+});
+
+// Initialize protection when page loads
+document.addEventListener('DOMContentLoaded', function () {
+    console.log('🔒 Client-side race condition protection initialized');
+
+    // Reset any stuck submission state (e.g., if page was refreshed during submission)
+    isSubmitting = false;
+    submissionRequestId = null;
+});
 function validateAndProceedToStep3() {
     const button = document.getElementById('next-to-step-3');
     const originalText = button.innerHTML;
@@ -1186,31 +1330,54 @@ function showJobReleaseConflicts(conflicts) {
     let conflictHtml = `
         <div class="alert alert-danger conflict-alert">
             <h6><iconify-icon icon="lucide:alert-triangle" class="me-2"></iconify-icon>Job Release Conflicts Detected</h6>
-            <p>The following conflicts prevent proceeding to review. Please remove conflicting items/pallets:</p>
+            <p>The following conflicts prevent proceeding to review. Please resolve conflicting items/pallets:</p>
             <ul class="mb-0">
     `;
 
     conflicts.forEach(function (conflict) {
         let conflictDescription = '';
+        let severity = '';
+
         switch (conflict.conflictType) {
             case 'EntirePalletAlreadyScheduled':
                 conflictDescription = `Entire pallet ${conflict.palletCode} is already scheduled in another job`;
+                severity = '⚠️';
+                break;
+            case 'EntirePalletAlreadyReleased':
+                conflictDescription = `Entire pallet ${conflict.palletCode} was already released`;
+                severity = '🚫';
                 break;
             case 'IndividualItemsAlreadyScheduled':
                 conflictDescription = `Items ${conflict.conflictingItems.join(', ')} from pallet ${conflict.palletCode} are already scheduled`;
+                severity = '⚠️';
+                break;
+            case 'IndividualItemsAlreadyReleased':
+                conflictDescription = `Items ${conflict.conflictingItems.join(', ')} from pallet ${conflict.palletCode} were already released`;
+                severity = '🚫';
                 break;
             case 'IndividualItemAlreadyScheduled':
                 conflictDescription = `Item ${conflict.conflictingItems[0]} is already scheduled in another job`;
+                severity = '⚠️';
+                break;
+            case 'IndividualItemAlreadyReleased':
+                conflictDescription = `Item ${conflict.conflictingItems[0]} was already released`;
+                severity = '🚫';
                 break;
             default:
                 conflictDescription = `Conflict detected for pallet ${conflict.palletCode}`;
+                severity = '❓';
         }
 
-        conflictHtml += `<li><strong>${conflict.materialNo}:</strong> ${conflictDescription}</li>`;
+        conflictHtml += `<li>${severity} <strong>${conflict.materialNo}:</strong> ${conflictDescription}</li>`;
     });
 
     conflictHtml += `
             </ul>
+            <div class="mt-2">
+                <small class="text-muted">
+                    <strong>Legend:</strong> ⚠️ = Scheduled but not released, 🚫 = Already released, ❓ = Other conflict
+                </small>
+            </div>
         </div>
     `;
 

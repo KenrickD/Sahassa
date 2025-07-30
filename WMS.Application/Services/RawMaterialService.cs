@@ -4172,6 +4172,18 @@ namespace WMS.Application.Services
 
                 return new ServiceWebResult { Success = true };
             }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException dbEx) when (IsUniqueConstraintViolation(dbEx))
+            {
+                await transaction.RollbackAsync();
+                _logger.LogWarning("Unique constraint violation in job release creation: {Error}",
+                    dbEx.InnerException?.Message);
+
+                return new ServiceWebResult
+                {
+                    Success = false,
+                    ErrorMessage = "Duplicate items detected. Some items may already be scheduled for release. Please refresh the page and try again."
+                };
+            }
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
@@ -4179,7 +4191,15 @@ namespace WMS.Application.Services
                 return new ServiceWebResult { Success = false, ErrorMessage = ex.Message };
             }
         }
-
+        private static bool IsUniqueConstraintViolation(Microsoft.EntityFrameworkCore.DbUpdateException dbEx)
+        {
+            var message = dbEx.InnerException?.Message ?? "";
+            return message.Contains("UK_ReleaseDetails_UniqueItemPerRelease") ||
+                   message.Contains("UK_ReleaseDetails_UniquePalletPerRelease") ||
+                   message.Contains("UK_ReleaseDetails_PreventMixedTypes") ||
+                   message.Contains("duplicate key") ||
+                   message.Contains("UNIQUE constraint failed");
+        }
         public async Task<List<GroupedPalletCountDto>> GetGroupedPalletCount(DateTime cutoffDate)
         {
             try
@@ -4247,66 +4267,79 @@ namespace WMS.Application.Services
         }
         public async Task<RMServiceWebResult> ValidateJobReleaseConflictsAsync(JobReleaseCreateDto dto)
         {
-            var conflicts = new List<JobReleaseConflictDto>();
+            _logger.LogInformation("Validating job release conflicts for {MaterialCount} materials", dto.Materials.Count);
 
-            foreach (var material in dto.Materials)
+            try
             {
-                foreach (var receive in material.Receives)
-                {
-                    // Validate entire pallets
-                    foreach (var palletRequest in receive.Pallets)
-                    {
-                        var palletConflicts = await ValidatePalletConflicts(
-                            material.MaterialId,
-                            receive.ReceiveId,
-                            palletRequest.PalletId,
-                            isEntirePallet: true
-                        );
-                        conflicts.AddRange(palletConflicts);
-                    }
+                var conflicts = new List<JobReleaseConflictDto>();
 
-                    // Validate individual items
-                    foreach (var itemRequest in receive.Items)
+                foreach (var material in dto.Materials)
+                {
+                    foreach (var receive in material.Receives)
                     {
-                        var itemConflicts = await ValidateItemConflicts(
-                            material.MaterialId,
-                            receive.ReceiveId,
-                            itemRequest.ItemId // Corrected: ItemId instead of PalletId
-                        );
-                        conflicts.AddRange(itemConflicts);
+                        // Validate entire pallets
+                        foreach (var pallet in receive.Pallets)
+                        {
+                            var palletConflicts = await ValidatePalletConflicts(
+                                material.MaterialId,
+                                receive.ReceiveId,
+                                pallet.PalletId,
+                                true // isEntirePallet
+                            );
+
+                            conflicts.AddRange(palletConflicts);
+                        }
+
+                        // Validate individual items
+                        foreach (var item in receive.Items)
+                        {
+                            var itemConflicts = await ValidateItemConflicts(
+                                material.MaterialId,
+                                receive.ReceiveId,
+                                item.ItemId
+                            );
+
+                            conflicts.AddRange(itemConflicts);
+                        }
                     }
                 }
-            }
 
-            if (conflicts.Any())
-            {
-                return new RMServiceWebResult
+                if (conflicts.Any())
                 {
-                    Success = false,
-                    ErrorMessage = $"Found {conflicts.Count} conflict(s). Please resolve before proceeding.",
-                    ValidationDetails = conflicts 
-                };
-            }
+                    return new RMServiceWebResult
+                    {
+                        Success = false,
+                        ErrorMessage = $"Found {conflicts.Count} conflicts. Please resolve before proceeding.",
+                        ValidationDetails = conflicts
+                    };
+                }
 
-            return new RMServiceWebResult { Success = true };
+                return new RMServiceWebResult { Success = true };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error validating job release conflicts");
+                return new RMServiceWebResult { Success = false, ErrorMessage = "Validation failed due to an error" };
+            }
         }
 
         private async Task<List<JobReleaseConflictDto>> ValidatePalletConflicts(
-            Guid materialId,
-            Guid receiveId,
-            Guid palletId,
-            bool isEntirePallet)
+    Guid materialId,
+    Guid receiveId,
+    Guid palletId,
+    bool isEntirePallet)
         {
             var conflicts = new List<JobReleaseConflictDto>();
 
-            // Check for existing entire pallet releases
+            // OPTION A: Strict validation - check ALL existing releases (recommended)
+            // Check for existing entire pallet releases (including completed ones)
             var existingEntirePalletReleases = await _dbContext.GIV_RM_ReleaseDetails
                 .Include(rd => rd.GIV_RM_Release)
                     .ThenInclude(r => r.GIV_RawMaterial)
                 .Include(rd => rd.GIV_RM_ReceivePallet)
                 .Where(rd => !rd.IsDeleted
-                    && rd.GIV_RM_Release.ActualReleaseDate == null  // Unreleased job
-                    && rd.ActualReleaseDate == null                  // Unreleased detail
+                    // REMOVED: && rd.GIV_RM_Release.ActualReleaseDate == null  
+                    // REMOVED: && rd.ActualReleaseDate == null                  
                     && rd.IsEntirePallet == true
                     && rd.GIV_RM_ReceivePalletId == palletId
                     && rd.GIV_RM_ReceiveId == receiveId)
@@ -4314,18 +4347,22 @@ namespace WMS.Application.Services
 
             foreach (var existingRelease in existingEntirePalletReleases)
             {
+                string conflictType = existingRelease.ActualReleaseDate.HasValue || existingRelease.GIV_RM_Release.ActualReleaseDate.HasValue
+                    ? "EntirePalletAlreadyReleased"  // Actually released
+                    : "EntirePalletAlreadyScheduled"; // Just scheduled
+
                 conflicts.Add(new JobReleaseConflictDto
                 {
                     MaterialNo = existingRelease.GIV_RM_Release.GIV_RawMaterial.MaterialNo,
                     ReceiveId = receiveId,
                     PalletCode = existingRelease.GIV_RM_ReceivePallet?.PalletCode,
-                    ConflictType = "EntirePalletAlreadyScheduled",
+                    ConflictType = conflictType,
                     ExistingJobId = existingRelease.GIV_RM_Release.JobId,
                     ConflictingItems = new List<string>()
                 });
             }
 
-            // If requesting entire pallet, check for individual item conflicts
+            // If requesting entire pallet, check for individual item conflicts (including completed ones)
             if (isEntirePallet)
             {
                 var existingItemReleases = await _dbContext.GIV_RM_ReleaseDetails
@@ -4334,8 +4371,8 @@ namespace WMS.Application.Services
                     .Include(rd => rd.GIV_RM_ReceivePallet)
                     .Include(rd => rd.GIV_RM_ReceivePalletItem)
                     .Where(rd => !rd.IsDeleted
-                        && rd.GIV_RM_Release.ActualReleaseDate == null
-                        && rd.ActualReleaseDate == null
+                        // REMOVED: && rd.GIV_RM_Release.ActualReleaseDate == null
+                        // REMOVED: && rd.ActualReleaseDate == null
                         && rd.IsEntirePallet == false
                         && rd.GIV_RM_ReceivePalletId == palletId
                         && rd.GIV_RM_ReceiveId == receiveId)
@@ -4343,12 +4380,16 @@ namespace WMS.Application.Services
 
                 if (existingItemReleases.Any())
                 {
+                    string conflictType = existingItemReleases.Any(r => r.ActualReleaseDate.HasValue || r.GIV_RM_Release.ActualReleaseDate.HasValue)
+                        ? "IndividualItemsAlreadyReleased"   // Some actually released
+                        : "IndividualItemsAlreadyScheduled"; // Just scheduled
+
                     conflicts.Add(new JobReleaseConflictDto
                     {
                         MaterialNo = existingItemReleases.First().GIV_RM_Release.GIV_RawMaterial.MaterialNo,
                         ReceiveId = receiveId,
                         PalletCode = existingItemReleases.First().GIV_RM_ReceivePallet?.PalletCode,
-                        ConflictType = "IndividualItemsAlreadyScheduled",
+                        ConflictType = conflictType,
                         ExistingJobId = existingItemReleases.First().GIV_RM_Release.JobId,
                         ConflictingItems = existingItemReleases
                             .Select(r => r.GIV_RM_ReceivePalletItem?.ItemCode ?? "Unknown")
@@ -4363,30 +4404,28 @@ namespace WMS.Application.Services
         private async Task<List<JobReleaseConflictDto>> ValidateItemConflicts(
             Guid materialId,
             Guid receiveId,
-            Guid itemId) // Corrected: removed palletId parameter since we get it from the item
+            Guid itemId)
         {
             var conflicts = new List<JobReleaseConflictDto>();
 
-            // First, get the item to find its pallet
+            // Get the item to find its pallet
             var item = await _dbContext.GIV_RM_ReceivePalletItems
                 .Include(i => i.GIV_RM_ReceivePallet)
                     .ThenInclude(p => p.GIV_RM_Receive)
-                        .ThenInclude(r => r.RawMaterial) 
+                        .ThenInclude(r => r.RawMaterial)
                 .FirstOrDefaultAsync(i => i.Id == itemId && !i.IsDeleted);
 
             if (item == null)
             {
-                return conflicts; // Item not found, skip validation
+                return conflicts;
             }
 
             var palletId = item.GIV_RM_ReceivePalletId;
 
-            // Check if entire pallet is already scheduled
+            // Check if entire pallet is already scheduled (including completed)
             var entirePalletScheduled = await _dbContext.GIV_RM_ReleaseDetails
                 .Include(rd => rd.GIV_RM_Release)
                 .AnyAsync(rd => !rd.IsDeleted
-                    && rd.GIV_RM_Release.ActualReleaseDate == null
-                    && rd.ActualReleaseDate == null
                     && rd.IsEntirePallet == true
                     && rd.GIV_RM_ReceivePalletId == palletId
                     && rd.GIV_RM_ReceiveId == receiveId);
@@ -4395,34 +4434,36 @@ namespace WMS.Application.Services
             {
                 conflicts.Add(new JobReleaseConflictDto
                 {
-                    MaterialNo = item.GIV_RM_ReceivePallet.GIV_RM_Receive.RawMaterial.MaterialNo, 
+                    MaterialNo = item.GIV_RM_ReceivePallet.GIV_RM_Receive.RawMaterial.MaterialNo,
                     ReceiveId = receiveId,
                     PalletCode = item.GIV_RM_ReceivePallet?.PalletCode,
                     ConflictType = "EntirePalletAlreadyScheduled",
-                    ExistingJobId = null, // Could fetch specific JobId if needed
+                    ExistingJobId = null,
                     ConflictingItems = new List<string>()
                 });
             }
 
-            // Check for duplicate individual item
+            // Check for duplicate individual item (including completed)
             var existingItemRelease = await _dbContext.GIV_RM_ReleaseDetails
                 .Include(rd => rd.GIV_RM_Release)
                     .ThenInclude(r => r.GIV_RawMaterial)
                 .Include(rd => rd.GIV_RM_ReceivePalletItem)
                 .FirstOrDefaultAsync(rd => !rd.IsDeleted
-                    && rd.GIV_RM_Release.ActualReleaseDate == null
-                    && rd.ActualReleaseDate == null
                     && rd.IsEntirePallet == false
                     && rd.GIV_RM_ReceivePalletItemId == itemId);
 
             if (existingItemRelease != null)
             {
+                string conflictType = existingItemRelease.ActualReleaseDate.HasValue || existingItemRelease.GIV_RM_Release.ActualReleaseDate.HasValue
+                    ? "IndividualItemAlreadyReleased"   // Actually released
+                    : "IndividualItemAlreadyScheduled"; // Just scheduled
+
                 conflicts.Add(new JobReleaseConflictDto
                 {
                     MaterialNo = existingItemRelease.GIV_RM_Release.GIV_RawMaterial.MaterialNo,
                     ReceiveId = receiveId,
-                    PalletCode = existingItemRelease.GIV_RM_ReceivePalletItem?.GIV_RM_ReceivePallet?.PalletCode, // Corrected: get PalletCode through navigation
-                    ConflictType = "IndividualItemAlreadyScheduled",
+                    PalletCode = existingItemRelease.GIV_RM_ReceivePalletItem?.GIV_RM_ReceivePallet?.PalletCode,
+                    ConflictType = conflictType,
                     ExistingJobId = existingItemRelease.GIV_RM_Release.JobId,
                     ConflictingItems = new List<string> { existingItemRelease.GIV_RM_ReceivePalletItem?.ItemCode ?? "Unknown" }
                 });
