@@ -889,8 +889,8 @@ namespace WMS.Application.Services
                 {
                     // Get all items with release records
                     var itemsWithReleaseRecords = releaseDetails
-                        .Where(d => d.GIV_RM_ReceivePalletItemId != Guid.Empty)
-                        .Select(d => d.GIV_RM_ReceivePalletItemId)
+                        .Where(d => d.GIV_RM_ReceivePalletItemId.HasValue)
+                        .Select(d => d.GIV_RM_ReceivePalletItemId.Value)
                         .Distinct()
                         .ToHashSet();
 
@@ -1034,8 +1034,8 @@ namespace WMS.Application.Services
             {
                 // Get the IDs of items that have release records
                 var itemIdsWithReleaseRecords = releaseDetails
-                    .Where(d => d.GIV_RM_ReceivePalletItemId != Guid.Empty)
-                    .Select(d => d.GIV_RM_ReceivePalletItemId)
+                    .Where(d => d.GIV_RM_ReceivePalletItemId.HasValue)
+                    .Select(d => d.GIV_RM_ReceivePalletItemId.Value)
                     .Distinct()
                     .ToHashSet();
 

@@ -5,6 +5,7 @@ let jobReleaseConfig = {};
 let globalConflictData = {};
 let isSubmitting = false;
 let submissionRequestId = null;
+let beforeUnloadHandler = null;
 $(document).ready(function () {
     initializeCreateJobRelease();
 });
@@ -62,14 +63,17 @@ function setupEventListeners() {
         }
     });
 
-    // Prevent form submission if user tries to refresh/navigate away during submission
-    window.addEventListener('beforeunload', function (e) {
+    // Store beforeunload handler reference so it can be removed later
+    beforeUnloadHandler = function (e) {
         if (isSubmitting) {
             const message = 'Job release submission is in progress. Are you sure you want to leave?';
             e.returnValue = message;
             return message;
         }
-    });
+    };
+
+    // Prevent form submission if user tries to refresh/navigate away during submission
+    window.addEventListener('beforeunload', beforeUnloadHandler);
 }
 
 function loadAvailableMaterials() {
@@ -1173,6 +1177,14 @@ function submitJobRelease() {
                 sessionStorage.setItem('jobReleaseSuccessMessage', successMessage);
 
                 console.log('🎉 Success! Redirecting to job releases page...');
+
+                // CRITICAL FIX: Remove beforeunload listener and reset state before redirect
+                if (beforeUnloadHandler) {
+                    window.removeEventListener('beforeunload', beforeUnloadHandler);
+                    console.log('🗑️ Removed beforeunload listener to prevent popup');
+                }
+                isSubmitting = false;
+                submissionRequestId = null;
 
                 // Small delay to show success message before redirect
                 setTimeout(function () {

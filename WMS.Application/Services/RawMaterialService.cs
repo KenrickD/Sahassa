@@ -4086,7 +4086,7 @@ namespace WMS.Application.Services
                                     GIV_RM_ReleaseId = release.Id,
                                     GIV_RM_ReceiveId = receiveDto.ReceiveId,
                                     GIV_RM_ReceivePalletId = pallet.Id,
-                                    GIV_RM_ReceivePalletItemId = firstItem.Id, // Use first item as representative
+                                    GIV_RM_ReceivePalletItemId = null,// changed to null to avoid itemid duplication 
                                     IsEntirePallet = true, // This indicates the entire pallet is being released
                                     CreatedAt = DateTime.UtcNow,
                                     CreatedBy = userId,
@@ -4527,12 +4527,12 @@ namespace WMS.Application.Services
 
                 // Process individual item conflicts
                 var individualItemReleases = scheduledReleases
-                    .Where(rd => !rd.IsEntirePallet && rd.GIV_RM_ReceivePalletItemId != Guid.Empty)
+                    .Where(rd => !rd.IsEntirePallet && rd.GIV_RM_ReceivePalletItemId.HasValue)
                     .ToList();
 
                 foreach (var release in individualItemReleases)
                 {
-                    var itemId = release.GIV_RM_ReceivePalletItemId;
+                    var itemId = release.GIV_RM_ReceivePalletItemId.Value;
 
                     // Only add if not already marked as parent pallet scheduled
                     if (!response.Items.ContainsKey(itemId))
@@ -4626,8 +4626,8 @@ namespace WMS.Application.Services
         }
 
         private MaterialConflictResponse ProcessMaterialConflictsInMemory(
-            List<ScheduledReleaseConflictDto> materialConflicts,
-            Dictionary<Guid, List<Guid>> palletItems)
+    List<ScheduledReleaseConflictDto> materialConflicts,
+    Dictionary<Guid, List<Guid>> palletItems)
         {
             var response = new MaterialConflictResponse
             {
@@ -4637,11 +4637,9 @@ namespace WMS.Application.Services
 
             // Process entire pallet conflicts
             var entirePalletConflicts = materialConflicts.Where(mc => mc.IsEntirePallet && mc.PalletId.HasValue);
-
             foreach (var conflict in entirePalletConflicts)
             {
                 var palletId = conflict.PalletId.Value;
-
                 // Add pallet conflict
                 response.Pallets[palletId] = new ConflictInfo
                 {
@@ -4649,7 +4647,6 @@ namespace WMS.Application.Services
                     JobId = conflict.JobId,
                     PalletCode = conflict.PalletCode
                 };
-
                 // Mark all items in this pallet as conflicted
                 if (palletItems.ContainsKey(palletId))
                 {
@@ -4667,12 +4664,10 @@ namespace WMS.Application.Services
             }
 
             // Process individual item conflicts
-            var individualItemConflicts = materialConflicts.Where(mc => !mc.IsEntirePallet && mc.ItemId != Guid.Empty);
-
+            var individualItemConflicts = materialConflicts.Where(mc => !mc.IsEntirePallet && mc.ItemId.HasValue);
             foreach (var conflict in individualItemConflicts)
             {
-                var itemId = conflict.ItemId;
-
+                var itemId = conflict.ItemId.Value;
                 // Only add if not already marked as parent pallet scheduled
                 if (!response.Items.ContainsKey(itemId))
                 {
