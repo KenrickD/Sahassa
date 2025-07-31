@@ -4004,6 +4004,23 @@ namespace WMS.Application.Services
 
             try
             {
+                foreach (var materialDto in dto.Materials)
+                {
+                    foreach (var receiveDto in materialDto.Receives)
+                    {
+                        // Deduplicate pallets within this receive
+                        receiveDto.Pallets = receiveDto.Pallets
+                            .GroupBy(p => p.PalletId)
+                            .Select(g => g.First())
+                            .ToList();
+
+                        // Deduplicate items within this receive
+                        receiveDto.Items = receiveDto.Items
+                            .GroupBy(i => i.ItemId)
+                            .Select(g => g.First())
+                            .ToList();
+                    }
+                }
                 // Generate a unique JobId for this release
                 var jobId = Guid.NewGuid();
                 var allReleases = new List<GIV_RM_Release>();
